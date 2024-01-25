@@ -1,0 +1,7 @@
+C:\Users\User\source\repos\Polymer brush\Polymer brush\obj\Debug\Polymer brush.csproj.AssemblyReference.cache
+C:\Users\User\source\repos\Polymer brush\Polymer brush\obj\Debug\Polymer brush.csproj.CoreCompileInputs.cache
+C:\Users\User\source\repos\Polymer brush\Polymer brush\bin\Debug\Polymer brush.exe.config
+C:\Users\User\source\repos\Polymer brush\Polymer brush\bin\Debug\Polymer brush.exe
+C:\Users\User\source\repos\Polymer brush\Polymer brush\bin\Debug\Polymer brush.pdb
+C:\Users\User\source\repos\Polymer brush\Polymer brush\obj\Debug\Polymer brush.exe
+C:\Users\User\source\repos\Polymer brush\Polymer brush\obj\Debug\Polymer brush.pdb
