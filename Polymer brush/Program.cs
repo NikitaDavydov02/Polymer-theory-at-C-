@@ -48,7 +48,7 @@ namespace Polymer_brush
 			
 			while (y_cur < y_edge)
             {
-				y_cur += aA / R;
+				//y_cur += aA / R;
 				//!write(*, *) 'Phi poly subroutine is called'
 				Xbrush = new double[3];
 				FI_POLI(out Xbrush, y_cur); //  !calculates concentration profile in the brush after the solution is found
@@ -65,13 +65,15 @@ namespace Polymer_brush
 				Console.Write("/n");
 
 				sw.WriteLine(y_cur.ToString()+"    "+fipolimer[0] + "    " + fipolimer[1] + "    " + fipolimer[2] + "    " + (Osmmix(3, fipolimer) - osmbulk));
+				y_cur += aA / R;
 			}
 
 			Console.WriteLine("Beta: " + y_edge);
 			Console.WriteLine("Calculation is done!");
-
+			
 
 			sw.Close();
+			Console.ReadLine();
 		}
 		static void Enter()
         {
