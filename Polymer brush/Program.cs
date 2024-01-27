@@ -16,7 +16,6 @@ namespace Polymer_brush
 		static double[,] chi;
 		static double[] Xbrush, fipolimer;
 		static double point_y;
-		static int i, j;
 		static StreamWriter sw;
 
 		static void Main(string[] args)
@@ -83,8 +82,8 @@ namespace Polymer_brush
 			rNA = 60.0; //number of segments in A - subchain
 			rNB = rN - rNA;
 			nu = 2.0; //spherical micelle
-			sigma = (7.0d - 09) * (7.0d - 09) / 0.12;
-			sigma = (7.0d - 09) * (7.0d - 09) / 0.6;
+			sigma = (7.0 * Math.Pow(10, -9)) * (7.0 * Math.Pow(10, -9)) / 0.12;
+			sigma = (7.0 * Math.Pow(10, -9)) * (7.0 * Math.Pow(10, -9)) / 0.6;
 			R = rNB * (nu + 1) * aA * aA * aA / sigma; // core radius((nu+1.0)*rNB / SIGMA)**2    LAGRANGE_STR1 = BA * (y_try - 1.0) * *2 * ((nu + 1.0) * rNB / SIGMA) * *2 * aA * *3  CHECK THIS
 													   //write(*, *) R,sigma
 													   //
@@ -191,7 +190,7 @@ namespace Polymer_brush
 		{
 			double nu = 2.0;
 			double aINT = 1.0;
-			double bINT = y_try;
+			double bINT = y;
 			double s = 1;
 			qtrap(aINT, bINT, out s);
 			return s - rNA / (rNB * (nu + 1.0));
@@ -205,8 +204,10 @@ namespace Polymer_brush
 			s = 0;
 			for(int n = 0; n < JMAX;n++)
             {
-				trapzd(aINT, bINT, out s, n);
-                if (n > 5)
+				if (n == 4)
+					n = 4;
+				s = trapzd(aINT, bINT, s, n+1);
+                if (n > 4)
 					if (Math.Abs(s - old_s) < EPS * Math.Abs(old_s) || (s == 0 && old_s == 0))
 						return;
 				old_s = s;
@@ -216,9 +217,9 @@ namespace Polymer_brush
 
 
 		}
-		static void trapzd(double aINT,double bINT, out double s, int n)
+		static double trapzd(double aINT,double bINT,double s, int n)
         {
-			s = 0;
+			//s = 0;
 			if (n == 1)
 				s = 0.5 * (bINT - aINT) * (fiav(aINT, bINT) + fiav(bINT, bINT));
             else
@@ -235,6 +236,7 @@ namespace Polymer_brush
                 }
 				s = 0.5 * (s + (bINT - aINT) * sum / tnm);
 			}
+			return s;
 		}
 		static double fiav(double y_cur, double bINT)
         {
@@ -305,12 +307,15 @@ namespace Polymer_brush
 
 			DNEQNF(EU_LA, ERREL, L, ITMAX, XBrushGUESS, out XBrush, out FNORM);
 
+			
 		}
 		delegate void NonlinearSystem(double[] XBrush, out double[] F, int L);
 		static void DNEQNF(NonlinearSystem Func, double ERREL, int L, int ITMAX, double[] XGuess, out double[] X, out double FNORM)
 		{
 			double[] F = new double[L];
 			X = new double[XGuess.Length];
+			double[] oldX = new double[XGuess.Length];
+			double[] deltaX = new double[XGuess.Length];
 			for (int i = 0; i < XGuess.Length; i++)
 				X[i] = XGuess[i];
 			FNORM = 0;
@@ -345,14 +350,43 @@ namespace Polymer_brush
 					for (int j = 0; j < X.Length; j++)
 						rightParts[i] += J[i, j] * X[j];
                 }
+
+				for (int j = 0; j < X.Length; j++)
+					oldX[j] = X[j];
 				X = Matrix.multiplyMatrixAndVector(L, L, reverse, rightParts);
 
+				for(int i=0;i<X.Length;i++)
+					deltaX[i] = X[i] - oldX[i];
+
+				if (double.IsNaN(X[0]))
+					;
+
+				for (double devisionStepDegree = 1; ContainsOutrangeValues(X); devisionStepDegree++)
+                {
+					for (int j = 0; j < X.Length; j++)
+                    {
+						deltaX[j] /= 2;
+						X[j] = oldX[j] + deltaX[j];
+					}
+						
+					
+                }
+
+				if (double.IsNaN(X[0]))
+					;
 				FNORM = 0;
 				for (int i = 0; i < L; i++)
 					FNORM += F[i] * F[i];
 			}
 			
         }
+		static bool ContainsOutrangeValues(double[] X)
+        {
+			foreach (double x in X)
+				if (x < 0 || x > 1)
+					return true;
+			return false;
+		}
 		static void EU_LA(double[] XBrush, out double[] F, int L)
         {
 			double nu = 2;
