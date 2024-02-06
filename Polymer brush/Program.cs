@@ -160,7 +160,7 @@ namespace Polymer_brush
 					sum += X[j] * (chi[i, j] - chi[0, j]);
 				DfmixDfi[i] = (Math.Log(X[i]) + 1.0) / Nal[i] - (Math.Log(X[0]) + 1.0) / Nal[0] + sum;// ! dummy for solvent identically 0
 				AlternativeDfmixDfi[i] = CalculateExchangeChemialPotentialOfComponent(X, i);
-				//DfmixDfi[i] = AlternativeDfmixDfi[i];                                                                                     //AlternativeDfmixDfi(i) = CalculateExchangeChemialPotentialOfComponent(3, X, i)
+				DfmixDfi[i] = AlternativeDfmixDfi[i];                                                                                     //AlternativeDfmixDfi(i) = CalculateExchangeChemialPotentialOfComponent(3, X, i)
 																									  //DfmixDfi(i) = AlternativeDfmixDfi(i)
 			}
 		}
@@ -187,7 +187,7 @@ namespace Polymer_brush
 					DfmixDfi[i] = (Math.Log(X[i]) + 1.0) / Nal[i] - (Math.Log(X[0]) + 1.0) / Nal[0] + sum;// ! dummy for solvent  identically 0
 				
 				AlternativeDfmixDfi[i] = CalculateExchangeChemialPotentialOfComponent(X, i);
-				//DfmixDfi[i] = AlternativeDfmixDfi[i];
+				DfmixDfi[i] = AlternativeDfmixDfi[i];
 			}
 		}
 		static double Osmmix(int numberOfComponents, double[] X)
