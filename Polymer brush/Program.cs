@@ -436,6 +436,8 @@ namespace Polymer_brush
             if (X[0] < max_dx)
 				max_dx = X[0];
 			double dx = 0.01*x;
+			if (dx == 0)
+				dx = 0.01;
 			if (dx > max_dx)
 				dx = max_dx;
 
