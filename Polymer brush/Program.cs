@@ -145,19 +145,23 @@ namespace Polymer_brush
 		static void Lagrmix(int numberOfComponents, double[] X, out double[] DfmixDfi)
 		{
 			DfmixDfi = new double[3];
+			double[] AlternativeDfmixDfi = new double[3];
 			for (int i = 0; i < numberOfComponents; i++)
 			{
 				double sum = 0;
 				for (int j = 0; j < numberOfComponents; j++)
 					sum += X[j] * (chi[i, j] - chi[0, j]);
 				DfmixDfi[i] = (Math.Log(X[i]) + 1.0) / Nal[i] - (Math.Log(X[0]) + 1.0) / Nal[0] + sum;// ! dummy for solvent identically 0
-																									  //AlternativeDfmixDfi(i) = CalculateExchangeChemialPotentialOfComponent(3, X, i)
+				AlternativeDfmixDfi[i] = CalculateExchangeChemialPotentialOfComponent(X, i);
+				//DfmixDfi[i] = AlternativeDfmixDfi[i];                                                                                     //AlternativeDfmixDfi(i) = CalculateExchangeChemialPotentialOfComponent(3, X, i)
 																									  //DfmixDfi(i) = AlternativeDfmixDfi(i)
 			}
 		}
 		static void Lagrmix_PolA(int numberOfComponents, double[] X, out double[] DfmixDfi)
 		{
 			DfmixDfi = new double[3];
+			double[] AlternativeDfmixDfi = new double[3];
+
 			for (int i = 0; i < numberOfComponents; i++)
 			{
 				if (X[i] < 0)
@@ -174,6 +178,9 @@ namespace Polymer_brush
 					DfmixDfi[i] = -(Math.Log(X[0]) + 1.0) / Nal[0] + sum;// ! dummy for solvent identically 0
 				else
 					DfmixDfi[i] = (Math.Log(X[i]) + 1.0) / Nal[i] - (Math.Log(X[0]) + 1.0) / Nal[0] + sum;// ! dummy for solvent  identically 0
+				
+				AlternativeDfmixDfi[i] = CalculateExchangeChemialPotentialOfComponent(X, i);
+				//DfmixDfi[i] = AlternativeDfmixDfi[i];
 			}
 		}
 		static double Osmmix(int numberOfComponents, double[] X)
@@ -412,6 +419,36 @@ namespace Polymer_brush
 			F = new double[L];
 			F[0] = X[0] * X[0] + X[1] * X[1] - 1;
 			F[1] = X[1] - X[0] * X[0];
+		}
+		static double CalculateMixingFreeEnergy(double[] X)
+        {
+			double a = X[0] * Math.Log(X[0]) + X[1] * Math.Log(X[1]) / Nal[1];
+			double b = chi[1, 2] * X[1] * X[2];
+			double c = chi[0, 1] * X[0] * X[1];
+			double d = chi[0, 2] * X[0] * X[2];
+			return a + b + c + d;
+		}
+		static double CalculateExchangeChemialPotentialOfComponent(double[] X, int componenIndex)
+        {
+			double f = CalculateMixingFreeEnergy(X);
+			double x = X[componenIndex];
+			double max_dx = 1 - x;
+            if (X[0] < max_dx)
+				max_dx = X[0];
+			double dx = 0.01*x;
+			if (dx > max_dx)
+				dx = max_dx;
+
+			double oldSolventVolumeFraction = X[0];
+			double x_dx = x + dx;
+			X[componenIndex] = x_dx;
+			X[0] -= dx;
+			double f_df = CalculateMixingFreeEnergy(X);
+			X[0] = oldSolventVolumeFraction;
+			X[componenIndex] = x;
+			return (f_df - f) / dx;
+
+
 		}
 	}
 }
