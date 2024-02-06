@@ -14,9 +14,11 @@ namespace Polymer_brush
 		static double rN, nu, coe, pi, osmbulk, y_try, y_edge, y_cur, P_AB;
 		static double[] lambda, Fibulk, Lagrbulk, Nal;
 		static double[,] chi;
+		static double[,] etas;
 		static double[] Xbrush, fipolimer;
 		static double point_y;
 		static StreamWriter sw;
+		static double z = 6;
 
 		static void Main(string[] args)
 		{
@@ -118,6 +120,11 @@ namespace Polymer_brush
 				for (int j = i + 1; j < 3; j++)
 					chi[j, i] = chi[i, j];
 			}
+
+			etas = new double[3, 3];
+			for (int i = 0; i < 3; i++)
+				for (int j = 0; j < 3; j++)
+					etas[i, j] = Math.Exp(-chi[i, j] / z);
 
 			//!give bulk composition and calculate Lagr.multipliers and osm pressure in the bulk:
 			Fibulk = new double[3];
@@ -428,9 +435,26 @@ namespace Polymer_brush
 			double d = chi[0, 2] * X[0] * X[2];
 			return a + b + c + d;
 		}
+		static double CalculateGugenheimMixingFreeEnergy(double[] X)
+		{
+			int n = X.Length;
+			double translationSum = X[0] * Math.Log(X[0]) + X[1] * Math.Log(X[1]) / Nal[1];
+			double[] XX = CalculateGugenheimCorrelations(X, etas);
+			double mixingSum = 0;
+			for (int i = 0; i < n; i++)
+				for (int j = 0; j > i; j++)
+					mixingSum += chi[i, j] * XX[i] * XX[j] * X[i] * X[j] * etas[i, j];
+
+			/*double b = chi[1, 2] * X[1] * X[2];
+			double c = chi[0, 1] * X[0] * X[1];
+			double d = chi[0, 2] * X[0] * X[2];*/
+			double output = translationSum + mixingSum;
+			return output;
+		}
 		static double CalculateExchangeChemialPotentialOfComponent(double[] X, int componenIndex)
         {
-			double f = CalculateMixingFreeEnergy(X);
+			//double f = CalculateMixingFreeEnergy(X);
+			double f = CalculateGugenheimMixingFreeEnergy(X);
 			double x = X[componenIndex];
 			double max_dx = 1 - x;
             if (X[0] < max_dx)
@@ -445,12 +469,47 @@ namespace Polymer_brush
 			double x_dx = x + dx;
 			X[componenIndex] = x_dx;
 			X[0] -= dx;
-			double f_df = CalculateMixingFreeEnergy(X);
+			//double f_df = CalculateMixingFreeEnergy(X);
+			double f_df = CalculateGugenheimMixingFreeEnergy(X);
 			X[0] = oldSolventVolumeFraction;
 			X[componenIndex] = x;
 			return (f_df - f) / dx;
 
 
 		}
-	}
+		static double[] CalculateGugenheimCorrelations(double[] alphas, double[,] etas)
+        {
+			int n = alphas.Length;
+			double[] XX = new double[n];
+			double[] newXX = new double[n];
+			double initialGuess = 1;
+			for(int i = 0; i < n; i++)
+            {
+				XX[i] = initialGuess;
+				initialGuess -= 0.0001;
+			}
+			bool converged = false;
+            while (!converged)
+            {
+				for (int i = 0; i < n; i++)
+				{
+					double sum = 0;
+					for (int j = 0; j < n; j++)
+						sum += alphas[j] * XX[j] * etas[i, j];
+					newXX[i] = 1 / sum;
+				}
+				for (int i = 0; i < n; i++)
+					XX[i] = (XX[i] + newXX[i]) / 2;
+				converged = true;
+				for (int i = 0; i < n; i++)
+					if (Math.Abs(XX[i] - newXX[i]) > Math.Pow(10, -12))
+					{
+						converged = false;
+						break;
+					}
+			}
+			return XX;
+
+		}
+	} 
 }
