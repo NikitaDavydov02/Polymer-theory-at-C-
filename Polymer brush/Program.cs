@@ -93,7 +93,8 @@ namespace Polymer_brush
 													   //
 			BA = coe / ((rNA * aA) * (rNA * aA));
 
-			y_min = 1.0 + 0.1 * aA / R;
+			//y_min = 1.0 + 0.1 * aA / R;
+			y_min = 1.0 + aA / R;
 			y_max = 1.00001 * (1.0 + 1.0 * aA * rNA / R);                 //y_max = 1.0d0 * (1.0d0 + 2.0 * aA * rNA / R)
 			yacc = Math.Pow(10, -8);
 
@@ -105,14 +106,23 @@ namespace Polymer_brush
 
 			Nal = new double[3];
 			Nal[0] = 1.0;// ! solvent
-			Nal[1] = 3.0;// ! bioadditive
+			Nal[1] = 2.0;// ! bioadditive
 			Nal[2] = rNA;// polymer
 
 			chi = new double[3, 3];
 
-			chi[0, 1] = 1.0;//! solv - bio
-			chi[0, 2] = 0.0;//! solv - polym
+			chi[0, 1] = 0.0;//! solv - bio
+			chi[0, 2] = 0.5;//! solv - polym
 			chi[1, 2] = -0.8;//d0! bio - polym
+
+
+			/*chi[0, 1] = 1.0;//! solv - bio
+			chi[0, 2] = 1.0;//! solv - polym
+			chi[1, 2] = -2.0;//d0! bio - polym*/
+
+			/*chi[0, 1] = 1.0;//! solv - bio
+			chi[0, 2] = -2.0;//! solv - polym
+			chi[1, 2] = -2.0;//d0! bio - polym*/
 
 			for (int i = 0; i < 3; i++)
 			{
@@ -124,7 +134,7 @@ namespace Polymer_brush
 			etas = new double[3, 3];
 			for (int i = 0; i < 3; i++)
 				for (int j = 0; j < 3; j++)
-					etas[i, j] = Math.Exp(-chi[i, j] / z);
+					etas[i, j] = Math.Exp(-3*chi[i, j]/z);
 
 			//!give bulk composition and calculate Lagr.multipliers and osm pressure in the bulk:
 			Fibulk = new double[3];
@@ -194,12 +204,12 @@ namespace Polymer_brush
 		{
 			double sum = 0;
 			double sum1 = 0;
-			for (int i = 0; i < numberOfComponents; i++)
+			/*for (int i = 0; i < numberOfComponents; i++)
 			{
 				sum1 = sum1 + X[i] * (1.0 - 1.0 / Nal[i]);
 				for (int j = 0; j < numberOfComponents; j++)
 					sum += X[i] * X[j] * (chi[0, j] - chi[i, j] / 2.0);
-			}
+			}*/
 			return Math.Log(X[0]) + sum1 + sum;
 		}
 		static double normal(double y)
@@ -223,6 +233,8 @@ namespace Polymer_brush
 				if (n == 4)
 					n = 4;
 				s = trapzd(aINT, bINT, s, n+1);
+				if (double.IsNaN(s))
+					;
                 if (n > 4)
 					if (Math.Abs(s - old_s) < EPS * Math.Abs(old_s) || (s == 0 && old_s == 0))
 						return;
@@ -247,7 +259,10 @@ namespace Polymer_brush
 				double sum = 0;
 				for(int counter = 0; counter < it; counter++)
                 {
-					sum += fiav(x, bINT);
+					double add = fiav(x, bINT);
+					if (double.IsNaN(add))
+						;
+					sum += add;
 					x += del;
                 }
 				s = 0.5 * (s + (bINT - aINT) * sum / tnm);
@@ -259,9 +274,13 @@ namespace Polymer_brush
 			int L = 2;
 			double nu = 2;
 			double y_try = bINT;
+			if (y_cur == 1.025296385404654)
+				;
 			Lamb_Pol = lambda[2] + BA * (R * (y_try - 1)) * (R * (y_try - 1));
 			FI_POLI(out Xbrush, y_cur);
 			double fay = Xbrush[1];
+			if (double.IsNaN(fay))
+				;
 			return fay * y_cur * y_cur;
 
 		}
@@ -442,7 +461,7 @@ namespace Polymer_brush
 			double[] XX = CalculateGugenheimCorrelations(X, etas);
 			double mixingSum = 0;
 			for (int i = 0; i < n; i++)
-				for (int j = 0; j > i; j++)
+				for (int j = 0; j < i; j++)
 					mixingSum += chi[i, j] * XX[i] * XX[j] * X[i] * X[j] * etas[i, j];
 
 			/*double b = chi[1, 2] * X[1] * X[2];
