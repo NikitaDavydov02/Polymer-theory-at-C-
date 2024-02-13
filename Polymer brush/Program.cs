@@ -117,7 +117,7 @@ namespace Polymer_brush
 			//bio
 			//pol
 			chi[0, 1] = 0;//! solv - bio
-			chi[0, 2] = -0.5;//! solv - polym
+			chi[0, 2] = 0.5;//! solv - polym
 			chi[1, 2] = -0.5;//d0! bio - polym
 
 
@@ -371,6 +371,7 @@ namespace Polymer_brush
 		delegate void NonlinearSystem(double[] X, out double[] F, int L);
 		static void DNEQNF(NonlinearSystem Func, double ERREL, int L, int ITMAX, double[] XGuess, out double[] X, out double FNORM)
 		{
+			int iterations = 0;
 			double[] F = new double[L];
 			X = new double[XGuess.Length];
 			double[] oldX = new double[XGuess.Length];
@@ -394,8 +395,15 @@ namespace Polymer_brush
 						double old_x = X[j];
 						double dx = old_x * 0.01;
 						X[j] += dx;
-						if (X[j] == 0.99383042773394248)
-							;
+
+
+						for (double devisionStepDegree = 1; X[j]>=1; devisionStepDegree++)
+                        {
+							dx /= 2;
+							X[j] = dx + old_x;
+						}
+
+
 						Func(X, out F, L);
 						double f_df = F[i];
 						J[i, j] = (f_df - f_init) / dx;
@@ -432,12 +440,18 @@ namespace Polymer_brush
 						
 					
                 }
-
+				if (X[0] > 1 || X[1] > 1)
+					;
 				if (double.IsNaN(X[0]))
 					;
 				FNORM = 0;
 				for (int i = 0; i < L; i++)
 					FNORM += F[i] * F[i];
+				iterations++;
+                if (iterations > ITMAX)
+                {
+					throw new Exception(" Newton method did not manage to find solution for system of equations");
+                }
 			}
 			
         }
@@ -481,7 +495,7 @@ namespace Polymer_brush
 			F[0] = (mixingPartOfExchangeChemicalPotentials[1] - chemPotInTheBulk[1]) * (mixingPartOfExchangeChemicalPotentials[1] - chemPotInTheBulk[1]);// !bio contaminant error
 			F[1] = Math.Pow((mixingPartOfExchangeChemicalPotentials[2] + BA * (R * (y_cur - 1.0)) * (R * (y_cur - 1.0)) - Lamb_Pol),2);//!polymer error
 
-			Console.WriteLine("BrushEquations " + F + "    " + X[0] + "    " + X[1]);
+			Console.WriteLine("BrushEquations values: " + F[0] + "  " +F[1] + " ----------------Volume fractions:   " + X[0] + "    " + X[1]);
 
 		}
 
