@@ -12,14 +12,14 @@ namespace Polymer_brush
 	{
 		public static double R, BA, y_min, y_max, yacc, aA, rNA, rNB, areaPerChain, Lamb_Pol;
 		public static double rN, nu, coe, pi, osmbulk, y_edge, y_cur, P_AB;
-		public static double[] lambda, volumeFractionsInTheBulk, Lagrbulk,  size;
+		public static double[] chemPotInTheBulk, volumeFractionsInTheBulk, Lagrbulk,  size;
 		public static double[,] chi;
 		public static double[,] etas;
 		static double[] Xbrush, fipolimer;
 		static double point_y;
 		static StreamWriter sw;
 		static double z = 6;
-		static double[] chemPotInTheBulk;
+		//static double[] chemPotInTheBulk;
 		static double[] chemPotAtTheBorder;
 		static MixingPartModule mixingPartModule;
 		static void Main(string[] args)
@@ -43,11 +43,11 @@ namespace Polymer_brush
 			sw.WriteLine("y_cur    solvent    bio    polymer    osm_pressure");
 
 			Enter();
-			y_edge = rtbis3(y_min, y_max, yacc);
+			y_edge = BisectionSolve(y_min, y_max, yacc);
 			y_cur = y_min;
 
 			//!Calculate polymer concentration at the start position(A / B boundary)
-			P_AB = fiav(y_cur, y_edge); // !   Polymer concentration at A/ B boundary(highest)  must work before finding profile to set Lagr multipliers in common block
+			P_AB = FindSubintegralValueForNormalization(y_cur, y_edge); // !   Polymer concentration at A/ B boundary(highest)  must work before finding profile to set Lagr multipliers in common block
            
 			
 			while (y_cur < y_edge)
@@ -55,7 +55,7 @@ namespace Polymer_brush
 				//y_cur += aA / R;
 				//!write(*, *) 'Phi poly subroutine is called'
 				Xbrush = new double[3];
-				FI_POLI(out Xbrush, y_cur); //  !calculates concentration profile in the brush after the solution is found
+				FindVolumeFractionsInTheBrushForPoint(out Xbrush, y_cur); //  !calculates concentration profile in the brush after the solution is found
 
 				
 				fipolimer[1] = Xbrush[0];//biocomponent // ! local compsition of the brush at point y_cur(1)-solvent(2) - biocomponent(3) - polymer
@@ -148,54 +148,46 @@ namespace Polymer_brush
 			volumeFractionsInTheBulk[1] = 1.0 - volumeFractionsInTheBulk[0];
 			volumeFractionsInTheBulk[2] = 0.0;
 
-			lambda = new double[3];
+			chemPotInTheBulk = new double[3];
 			chemPotAtTheBorder = new double[3];
 			fipolimer = new double[3];
-			chemPotInTheBulk = new double[3];
-			Lagrmix(2, volumeFractionsInTheBulk, out Lagrbulk);
+			//Lagrmix(2, volumeFractionsInTheBulk, out Lagrbulk);
 			Lagrmix(2, volumeFractionsInTheBulk, out chemPotInTheBulk);
-			lambda[1] = Lagrbulk[1];//this is for biocomponent
+			//chemPotInTheBulk[1] = Lagrbulk[1];//this is for biocomponent
 			osmbulk = Osmmix(2, volumeFractionsInTheBulk);// !  this is for solvent
 
-			lambda[0] = Lagrbulk[0]; //!  this should be identiacally zero
-
+			//chemPotInTheBulk[0] = Lagrbulk[0]; //!  this should be identiacally zero
 			//! now calculate  mixing part of Lagrange multiplier at the edge of the brush, where  FiA = 0:
-
-			volumeFractionsInTheBulk[2] = 0.0;
-
-			Lagrmix_PolA(3, volumeFractionsInTheBulk, out Lagrbulk);// ! NOTE  that  Lagr multipliers are spoiled in  Lagrbulk   but stored in common
-
-			lambda[2] = Lagrbulk[2];
+			//volumeFractionsInTheBulk[2] = 0.0;
+			//Lagrmix_PolA(3, volumeFractionsInTheBulk, out Lagrbulk);// ! NOTE  that  Lagr multipliers are spoiled in  Lagrbulk   but stored in common
+			//chemPotInTheBulk[2] = Lagrbulk[2];
 
 		}
-		static void Lagrmix(int numberOfComponents, double[] X, out double[] DfmixDfi)
+		static void Lagrmix(int numberOfComponents, double[] X, out double[] mixingPartOfExchangeChemicalPotentials)
 		{
-			DfmixDfi = new double[3];
-			double[] AlternativeDfmixDfi = new double[3];
+			mixingPartOfExchangeChemicalPotentials = new double[3];
+			double[] AlternativemixingPartOfExchangeChemicalPotentials = new double[3];
 			for (int i = 0; i < numberOfComponents; i++)
 			{
 				double sum = 0;
 				for (int j = 0; j < numberOfComponents; j++)
 					sum += X[j] * (chi[i, j] - chi[0, j]);
-				DfmixDfi[i] = (Math.Log(X[i]) + 1.0) /  size[i] - (Math.Log(X[0]) + 1.0) /  size[0] + sum;// ! dummy for solvent identically 0
-				AlternativeDfmixDfi[i] = mixingPartModule.CalculateExchangeChemialPotentialOfComponent(X, i);
-				DfmixDfi[i] = AlternativeDfmixDfi[i];                                                                                     //AlternativeDfmixDfi(i) = CalculateExchangeChemialPotentialOfComponent(3, X, i)
-																									  //DfmixDfi(i) = AlternativeDfmixDfi(i)
+				mixingPartOfExchangeChemicalPotentials[i] = (Math.Log(X[i]) + 1.0) /  size[i] - (Math.Log(X[0]) + 1.0) /  size[0] + sum;// ! dummy for solvent identically 0
+				AlternativemixingPartOfExchangeChemicalPotentials[i] = mixingPartModule.CalculateExchangeChemialPotentialOfComponent(X, i);
+				mixingPartOfExchangeChemicalPotentials[i] = AlternativemixingPartOfExchangeChemicalPotentials[i];                                                                                     //AlternativemixingPartOfExchangeChemicalPotentials(i) = CalculateExchangeChemialPotentialOfComponent(3, X, i)
 			}
 		}
-		static void Lagrmix_PolA(int numberOfComponents, double[] X, out double[] DfmixDfi)
+		static void Lagrmix_PolA(int numberOfComponents, double[] X, out double[] mixingPartOfExchangeChemicalPotentials)
 		{
-			if (X[2] == 0.99383042773394248)
-				;
-			DfmixDfi = new double[3];
-			double[] AlternativeDfmixDfi = new double[3];
+			mixingPartOfExchangeChemicalPotentials = new double[3];
+			double[] AlternativemixingPartOfExchangeChemicalPotentials = new double[3];
 
 			for (int i = 0; i < numberOfComponents; i++)
 			{
 				if (X[i] < 0)
 				{
 					for (int n = 0; n < numberOfComponents; n++)
-						DfmixDfi[n] = 1050;
+						mixingPartOfExchangeChemicalPotentials[n] = 1050;
 					return;
 				}
 
@@ -203,33 +195,33 @@ namespace Polymer_brush
 				for (int j = 0; j < numberOfComponents; j++)
 					sum += X[j] * (chi[i, j] - chi[0, j]);
 				if (i == numberOfComponents - 1)
-					DfmixDfi[i] = -(Math.Log(X[0]) + 1.0) /  size[0] + sum;// ! dummy for solvent identically 0
+					mixingPartOfExchangeChemicalPotentials[i] = -(Math.Log(X[0]) + 1.0) /  size[0] + sum;// ! dummy for solvent identically 0
 				else
-					DfmixDfi[i] = (Math.Log(X[i]) + 1.0) /  size[i] - (Math.Log(X[0]) + 1.0) /  size[0] + sum;// ! dummy for solvent  identically 0
+					mixingPartOfExchangeChemicalPotentials[i] = (Math.Log(X[i]) + 1.0) /  size[i] - (Math.Log(X[0]) + 1.0) /  size[0] + sum;// ! dummy for solvent  identically 0
 				
-				AlternativeDfmixDfi[i] = mixingPartModule.CalculateExchangeChemialPotentialOfComponent(X, i);
-				DfmixDfi[i] = AlternativeDfmixDfi[i];
+				AlternativemixingPartOfExchangeChemicalPotentials[i] = mixingPartModule.CalculateExchangeChemialPotentialOfComponent(X, i);
+				mixingPartOfExchangeChemicalPotentials[i] = AlternativemixingPartOfExchangeChemicalPotentials[i];
 			}
 		}
 		static double Osmmix(int numberOfComponents, double[] X)
 		{
 			double sum = 0;
 			double sum1 = 0;
-			/*for (int i = 0; i < numberOfComponents; i++)
+			for (int i = 0; i < numberOfComponents; i++)
 			{
 				sum1 = sum1 + X[i] * (1.0 - 1.0 /  size[i]);
 				for (int j = 0; j < numberOfComponents; j++)
 					sum += X[i] * X[j] * (chi[0, j] - chi[i, j] / 2.0);
-			}*/
+			}
 			return Math.Log(X[0]) + sum1 + sum;
 		}
-		static double normal(double y)
+		static double NormalizationFunctionValue(double y)
 		{
 			
 			double nu = 2.0;
 			double norm = rNA / (rNB * (nu + 1.0));
-			double aINT = 1.0;
-			double bINT = y;
+			double integrationMin = 1.0;
+			double integrationMax = y;
 			double s = 1;
 
 
@@ -242,24 +234,25 @@ namespace Polymer_brush
 			XBorderGUESS[0] = volumeFractionsInTheBulk[0];//this is the fraction of solvent at the border
 			XBorderGUESS[1]= volumeFractionsInTheBulk[1];//this is the fraction of biocomponnt at the border
 			//XBorderGUESS[0] = 0.1;
+
 			double FNORM;
 			double[] _XBorder = new double[3];
 			DNEQNF(BorderEquations, ERREL, 2, 1000, XBorderGUESS,out _XBorder, out FNORM);
 
-			double[] volFractions = new double[3];
-			volFractions[0] = _XBorder[0];
-			volFractions[1] = _XBorder[1];
-			volFractions[2] = 1 - volFractions[0] - volFractions[1];
-			Lagrmix_PolA(3, volFractions, out chemPotAtTheBorder);
+			double[] volFractionsAtTheBorder = new double[3];
+			volFractionsAtTheBorder[0] = _XBorder[0];
+			volFractionsAtTheBorder[1] = _XBorder[1];
+			volFractionsAtTheBorder[2] = 1 - volFractionsAtTheBorder[0] - volFractionsAtTheBorder[1];
+			Lagrmix_PolA(3, volFractionsAtTheBorder, out chemPotAtTheBorder);
 
-			chemPotAtTheBorder[2] += BA * (R * (bINT - 1)) * (R * (bINT - 1));
+			chemPotAtTheBorder[2] += BA * (R * (integrationMax - 1)) * (R * (integrationMax - 1));
 			Lamb_Pol = chemPotAtTheBorder[2];
 
-			qtrap(aINT, bINT, out s);
+			CalculateNormalizationIntegral(integrationMin, integrationMax, out s);
 			return s -norm;
 
 		}
-		static void qtrap(double aINT, double bINT, out double s)
+		static void CalculateNormalizationIntegral(double integrationMin, double integrationMax, out double s)
         {
 			double EPS = 0.1;
 			int JMAX = 8;
@@ -267,11 +260,8 @@ namespace Polymer_brush
 			s = 0;
 			for(int n = 0; n < JMAX;n++)
             {
-				if (n == 4)
-					n = 4;
-				s = trapzd(aINT, bINT, s, n+1);
-				if (double.IsNaN(s))
-					;
+				s = CalculateNormalizationIntegralWithDefeniteNumberOfTrapezoids(integrationMin, integrationMax, s, n+1);
+				
                 if (n > 4)
 					if (Math.Abs(s - old_s) < EPS * Math.Abs(old_s) || (s == 0 && old_s == 0))
 						return;
@@ -282,43 +272,43 @@ namespace Polymer_brush
 
 
 		}
-		static double trapzd(double aINT,double bINT,double s, int n)
+		static double CalculateNormalizationIntegralWithDefeniteNumberOfTrapezoids(double integrationMin,double integrationMax,double s, int n)
         {
 			//s = 0;
 			if (n == 1)
-				s = 0.5 * (bINT - aINT) * (fiav(aINT, bINT) + fiav(bINT, bINT));
+				s = 0.5 * (integrationMax - integrationMin) * (FindSubintegralValueForNormalization(integrationMin, integrationMax) + FindSubintegralValueForNormalization(integrationMax, integrationMax));
             else
             {
 				int it = (int)Math.Pow(2, n - 2);
 				double tnm = it;
-				double del = (bINT - aINT) / tnm;
-				double x = aINT + 0.5 * del;
+				double del = (integrationMax - integrationMin) / tnm;
+				double x = integrationMin + 0.5 * del;
 				double sum = 0;
 				for(int counter = 0; counter < it; counter++)
                 {
-					double add = fiav(x, bINT);
+					double add = FindSubintegralValueForNormalization(x, integrationMax);
 					if (double.IsNaN(add))
 						;
 					sum += add;
 					x += del;
                 }
-				s = 0.5 * (s + (bINT - aINT) * sum / tnm);
+				s = 0.5 * (s + (integrationMax - integrationMin) * sum / tnm);
 			}
 			return s;
 		}
-		static double fiav(double y_cur, double bINT)
+		static double FindSubintegralValueForNormalization(double y_cur, double integrationMax)
         {
 			int L = 2;
 			double nu = 2;
-			//Lamb_Pol = lambda[2] + BA * (R * (  - 1)) * (R * (  - 1));
-			FI_POLI(out Xbrush, y_cur);
+			//Lamb_Pol = chemPotInTheBulk[2] + BA * (R * (  - 1)) * (R * (  - 1));
+			FindVolumeFractionsInTheBrushForPoint(out Xbrush, y_cur);
 			double fay = Xbrush[1];
 			if (double.IsNaN(fay))
 				;
 			return fay * y_cur * y_cur;
 
 		}
-		static double rtbis3(double y_min, double y_max, double yacc)
+		static double BisectionSolve(double y_min, double y_max, double yacc)
 		{
 			double output = 0;
 			int j_max = 100; //!Maximum allowed number of bisections.
@@ -326,8 +316,8 @@ namespace Polymer_brush
 							 //!root, returned as rtbis, will be refined until its accuracy is ï¿½xacc.
 			double dx, f, fmid, xmid;
 			//!calculating function value at y_max
-			fmid = normal(y_max);
-			f = normal(y_min);// !R2(beta2, lambda, itog2)
+			fmid = NormalizationFunctionValue(y_max);
+			f = NormalizationFunctionValue(y_min);// !R2(beta2, chemPotInTheBulk, itog2)
 
 			if (f * fmid > 0)
 			{
@@ -351,7 +341,7 @@ namespace Polymer_brush
 			{
 				dx = dx / 2;
 				xmid = output + dx;
-				fmid = normal(xmid);// !call R3(beta3, lambda, itog3)
+				fmid = NormalizationFunctionValue(xmid);// !call R3(beta3, chemPotInTheBulk, itog3)
 				if (fmid < 0)
 					output = xmid;
 				if (Math.Abs(dx) < yacc || fmid == 0)
@@ -360,7 +350,7 @@ namespace Polymer_brush
 			Console.WriteLine("Too many iterations");
 			throw new Exception();
 		}
-		static void FI_POLI(out double[] XBrush, double y_cur)
+		static void FindVolumeFractionsInTheBrushForPoint(out double[] XBrush, double y_cur)
         {
 			//!Solving(localy) system of non - linear equations
 
@@ -374,7 +364,7 @@ namespace Polymer_brush
 			XBrushGUESS[1]=0.97;//this is the fraction of polymer in the brush
 			double FNORM;
 
-			DNEQNF(EU_LA, ERREL, L, ITMAX, XBrushGUESS, out XBrush, out FNORM);
+			DNEQNF(BrushEquations, ERREL, L, ITMAX, XBrushGUESS, out XBrush, out FNORM);
 
 			
 		}
@@ -466,39 +456,33 @@ namespace Polymer_brush
 			_volumeFractions[1] = X[1];//bio
 			_volumeFractions[2] = 1 - _volumeFractions[0] - _volumeFractions[1];
 			F = new double[L];
-			double[] DfmixDfi;
-			Lagrmix_PolA(3, _volumeFractions, out DfmixDfi);
+			double[] mixingPartOfExchangeChemicalPotentials;
+			Lagrmix_PolA(3, _volumeFractions, out mixingPartOfExchangeChemicalPotentials);
 			double osmoticPressure = 0;
 			osmoticPressure =mixingPartModule.CalculateMixingFreeEnergy(_volumeFractions);
 			for (int i = 1; i < 3; i++)
-				osmoticPressure -= _volumeFractions[i] * DfmixDfi[i];
-			F[0] = (DfmixDfi[0] - chemPotAtTheBorder[0]) * (DfmixDfi[0] - chemPotAtTheBorder[0]);//solvent
-			F[1] = (DfmixDfi[1] - chemPotAtTheBorder[1]) * (DfmixDfi[1] - chemPotAtTheBorder[1]);//bio
+				osmoticPressure -= _volumeFractions[i] * mixingPartOfExchangeChemicalPotentials[i];
+			F[0] = (mixingPartOfExchangeChemicalPotentials[0] - chemPotAtTheBorder[0]) * (mixingPartOfExchangeChemicalPotentials[0] - chemPotAtTheBorder[0]);//solvent
+			F[1] = (mixingPartOfExchangeChemicalPotentials[1] - chemPotAtTheBorder[1]) * (mixingPartOfExchangeChemicalPotentials[1] - chemPotAtTheBorder[1]);//bio
 			F[0] = osmoticPressure * osmoticPressure;
 		}
-		static void EU_LA(double[] X, out double[] F, int L)
+		static void BrushEquations(double[] X, out double[] F, int L)
         {
 			double nu = 2;
 			double y_cur = point_y;
 			fipolimer[1] = X[0];
 			fipolimer[2] = X[1];
 			fipolimer[0] = 1 - fipolimer[1] - fipolimer[2];
-			double[] DfmixDfi;
+			double[] mixingPartOfExchangeChemicalPotentials;
 			//!Calculate values that in ideal case must be equal to Lagrangian multipliers based on current concentrations
-			Lagrmix_PolA(3, fipolimer, out DfmixDfi);
+			Lagrmix_PolA(3, fipolimer, out mixingPartOfExchangeChemicalPotentials);
 			F = new double[L];
 
-			F[0] = (DfmixDfi[1] - lambda[1]) * (DfmixDfi[1] - lambda[1]);// !bio contaminant error
-			F[1] = Math.Pow((DfmixDfi[2] + BA * (R * (y_cur - 1.0)) * (R * (y_cur - 1.0)) - Lamb_Pol),2);//!polymer error
+			F[0] = (mixingPartOfExchangeChemicalPotentials[1] - chemPotInTheBulk[1]) * (mixingPartOfExchangeChemicalPotentials[1] - chemPotInTheBulk[1]);// !bio contaminant error
+			F[1] = Math.Pow((mixingPartOfExchangeChemicalPotentials[2] + BA * (R * (y_cur - 1.0)) * (R * (y_cur - 1.0)) - Lamb_Pol),2);//!polymer error
 
-			Console.WriteLine("EU_LA " + F + "    " + X[0] + "    " + X[1]);
+			Console.WriteLine("BrushEquations " + F + "    " + X[0] + "    " + X[1]);
 
-		}
-		static void TestSystem(double[] X, out double[] F, int L)
-        {
-			F = new double[L];
-			F[0] = X[0] * X[0] + X[1] * X[1] - 1;
-			F[1] = X[1] - X[0] * X[0];
 		}
 
 		//static double CalculateMixingFreeEnergy(double[] X)
