@@ -117,8 +117,8 @@ namespace Polymer_brush
 			//bio
 			//pol
 			chi[0, 1] = 0;//! solv - bio
-			chi[0, 2] = 0.5;//! solv - polym
-			chi[1, 2] = -0.5;//d0! bio - polym
+			chi[0, 2] = 1;//! solv - polym
+			chi[1, 2] = 1;//d0! bio - polym
 
 
 			/*chi[0, 1] = 1.0;//! solv - bio
