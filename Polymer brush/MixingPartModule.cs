@@ -34,8 +34,9 @@ namespace Polymer_brush
 		}*/
 		public double CalculateMixingFreeEnergy(double[] X)
         {
-			return CalculateFloryMixingFreeEnergy(X);
-        }
+			//return CalculateFloryMixingFreeEnergy(X);
+			return CalculateGugenheimMixingFreeEnergy(X);
+		}
 		private double CalculateFloryMixingFreeEnergy(double[] X)
 		{
 		

@@ -116,18 +116,20 @@ namespace Polymer_brush
 			//solv
 			//bio
 			//pol
+
 			chi[0, 1] = 0;//! solv - bio
+			chi[0, 2] = 5;//! solv - polym
+			chi[1, 2] = 0;//d0! bio - polym
+			/* does not work
+			 * chi[0, 1] = 1;//! solv - bio
 			chi[0, 2] = 1;//! solv - polym
-			chi[1, 2] = 1;//d0! bio - polym
+			chi[1, 2] = -0.8;//d0! bio - polym*/
 
 
-			/*chi[0, 1] = 1.0;//! solv - bio
-			chi[0, 2] = 1.0;//! solv - polym
-			chi[1, 2] = -2.0;//d0! bio - polym*/
-
-			/*chi[0, 1] = 1.0;//! solv - bio
-			chi[0, 2] = -2.0;//! solv - polym
-			chi[1, 2] = -2.0;//d0! bio - polym*/
+			/*	work
+			 *	chi[0, 1] = 1;//! solv - bio
+				chi[0, 2] = 0.6;//! solv - polym
+				chi[1, 2] = -0.8;//d0! bio - polym*/
 
 			for (int i = 0; i < 3; i++)
 			{
@@ -144,7 +146,7 @@ namespace Polymer_brush
 			//!give bulk composition and calculate Lagr.multipliers and osm pressure in the bulk:
 			volumeFractionsInTheBulk = new double[3];
 
-			volumeFractionsInTheBulk[0] = 0.98;
+			volumeFractionsInTheBulk[0] = 0.999;
 			volumeFractionsInTheBulk[1] = 1.0 - volumeFractionsInTheBulk[0];
 			volumeFractionsInTheBulk[2] = 0.0;
 
