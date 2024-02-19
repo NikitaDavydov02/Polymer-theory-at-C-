@@ -200,26 +200,27 @@ namespace Polymer_brush
 		}
 		static void Lagrmix(int numberOfComponents, double[] X, out double[] mixingPartOfExchangeChemicalPotentials)
 		{
-			mixingPartOfExchangeChemicalPotentials = new double[3];
-			double[] AlternativemixingPartOfExchangeChemicalPotentials = new double[3];
+			mixingPartOfExchangeChemicalPotentials = new double[NumberOfComponents];
+			double[] AlternativemixingPartOfExchangeChemicalPotentials = new double[NumberOfComponents];
 			for (int i = 0; i < numberOfComponents; i++)
 			{
-				double sum = 0;
+				/*double sum = 0;
 				for (int j = 0; j < numberOfComponents; j++)
 					sum += X[j] * (chi[i, j] - chi[0, j]);
 				mixingPartOfExchangeChemicalPotentials[i] = (Math.Log(X[i]) + 1.0) /  size[i] - (Math.Log(X[0]) + 1.0) /  size[0] + sum;// ! dummy for solvent identically 0
+				*/
 				AlternativemixingPartOfExchangeChemicalPotentials[i] = mixingPartModule.CalculateExchangeChemialPotentialOfComponent(X, i);
 				mixingPartOfExchangeChemicalPotentials[i] = AlternativemixingPartOfExchangeChemicalPotentials[i];                                                                                     //AlternativemixingPartOfExchangeChemicalPotentials(i) = CalculateExchangeChemialPotentialOfComponent(3, X, i)
 			}
 		}
 		static void Lagrmix_PolA(int numberOfComponents, double[] X, out double[] mixingPartOfExchangeChemicalPotentials)
 		{
-			mixingPartOfExchangeChemicalPotentials = new double[3];
-			double[] AlternativemixingPartOfExchangeChemicalPotentials = new double[3];
+			mixingPartOfExchangeChemicalPotentials = new double[NumberOfComponents];
+			double[] AlternativemixingPartOfExchangeChemicalPotentials = new double[NumberOfComponents];
 
 			for (int i = 0; i < numberOfComponents; i++)
 			{
-				if (X[i] < 0)
+				/*if (X[i] < 0)
 				{
 					for (int n = 0; n < numberOfComponents; n++)
 						mixingPartOfExchangeChemicalPotentials[n] = 1050;
@@ -233,7 +234,7 @@ namespace Polymer_brush
 					mixingPartOfExchangeChemicalPotentials[i] = -(Math.Log(X[0]) + 1.0) /  size[0] + sum;// ! dummy for solvent identically 0
 				else
 					mixingPartOfExchangeChemicalPotentials[i] = (Math.Log(X[i]) + 1.0) /  size[i] - (Math.Log(X[0]) + 1.0) /  size[0] + sum;// ! dummy for solvent  identically 0
-				
+				*/
 				AlternativemixingPartOfExchangeChemicalPotentials[i] = mixingPartModule.CalculateExchangeChemialPotentialOfComponent(X, i);
 				mixingPartOfExchangeChemicalPotentials[i] = AlternativemixingPartOfExchangeChemicalPotentials[i];
 			}

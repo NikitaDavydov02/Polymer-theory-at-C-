@@ -37,19 +37,39 @@ namespace Polymer_brush
 			//return CalculateFloryMixingFreeEnergy(X);
 			return CalculateGugenheimMixingFreeEnergy(X);
 		}
-		private double CalculateFloryMixingFreeEnergy(double[] X)
-		{
-		
-			double a = X[0] * Math.Log(X[0]) + X[1] * Math.Log(X[1]) / Program.size[1];
-			double b = Program.chi[1, 2] * X[1] * X[2];
-			double c = Program.chi[0, 1] * X[0] * X[1];
-			double d = Program.chi[0, 2] * X[0] * X[2];
-			return a + b + c + d;
+		private double[] CalculateFunctionalGroupsMolarFractions(double[] XofMolecules)
+        {
+			double[] functionalGroupsVolumeFraction = new double[Program.chiMatrixSize];
+			for (int i = 0; i < Program.NumberOfComponents - 1; i++)
+				functionalGroupsVolumeFraction[i] = XofMolecules[i];
+			for (int i = Program.NumberOfComponents - 1; i < Program.chiMatrixSize; i++)
+				functionalGroupsVolumeFraction[i] = XofMolecules[Program.NumberOfComponents - 1] * Program.fractionsOfGroups[i - (Program.NumberOfComponents - 1)];
+			return functionalGroupsVolumeFraction;
 		}
-		private double CalculateGugenheimMixingFreeEnergy(double[] X)
+		private double CalculateFloryMixingFreeEnergy(double[] XofMolecules)
 		{
+			double[] X = CalculateFunctionalGroupsMolarFractions(XofMolecules);
+			double a = 0;
+			for(int i=0;i<Program.NumberOfComponents-1;i++)
+				a += XofMolecules[i] * Math.Log(XofMolecules[i]) / Program.size[i];
+			//a=X[0] * Math.Log(X[0]) + X[1] * Math.Log(X[1]) / Program.size[1];
+			/*double b = Program.chi[1, 2] * X[1] * X[2];
+			double c = Program.chi[0, 1] * X[0] * X[1];
+			double d = Program.chi[0, 2] * X[0] * X[2];*/
+			for (int i = 0; i < Program.chiMatrixSize; i++)
+				for (int j = 0;j < Program.chiMatrixSize; j++)
+					if(j>i)
+						a+=Program.chi[i, j] * X[i] * X[j];
+			//return a + b + c + d;
+			return a;
+		}
+		private double CalculateGugenheimMixingFreeEnergy(double[] XofMolecules)
+		{
+			double[] X = CalculateFunctionalGroupsMolarFractions(XofMolecules);
 			int n = X.Length;
-			double translationSum = X[0] * Math.Log(X[0]) + X[1] * Math.Log(X[1]) / Program.size[1];
+			double translationSum = 0;
+			for (int i = 0; i < Program.NumberOfComponents - 1; i++)
+				translationSum += XofMolecules[i] * Math.Log(XofMolecules[i]) / Program.size[i]; 
 			double[] XX = CalculateGugenheimCorrelations(X, Program.etas);
 			double mixingSum = 0;
 			for (int i = 0; i < n; i++)
