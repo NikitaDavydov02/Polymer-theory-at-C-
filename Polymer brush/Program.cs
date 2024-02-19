@@ -289,7 +289,7 @@ namespace Polymer_brush
 			Lagrmix_PolA(NumberOfComponents, volFractionsAtTheBorder, out chemPotAtTheBorder);
 
 			chemPotAtTheBorder[NumberOfComponents-1] += BA * (R * (integrationMax - 1)) * (R * (integrationMax - 1));
-			Lamb_Pol = chemPotAtTheBorder[NumberOfComponents - 1];
+			Lamb_Pol = chemPotAtTheBorder[NumberOfComponents-1];
 
 			CalculateIntegral(integrationMin, integrationMax,NormalizationSubintegralValue,new List<double>() { y }, out s);
 			return s -norm;
@@ -513,21 +513,27 @@ namespace Polymer_brush
 		}
 		static void BorderEquations(double[] X, out double[] F, int L)
         {
-			
-			double[] _volumeFractions = new double[3];
-			_volumeFractions[0] = X[0];//solv
-			_volumeFractions[1] = X[1];//bio
-			_volumeFractions[2] = 1 - _volumeFractions[0] - _volumeFractions[1];
+			double[] _volumeFractions = new double[NumberOfComponents];
+			double volumeFractionSum = 0;
+			for (int i = 0; i < NumberOfComponents-1; i++)
+			{
+				_volumeFractions[i] = X[i];
+				volumeFractionSum += X[i];
+			}
+			_volumeFractions[NumberOfComponents - 1] = 1 - volumeFractionSum;
 			F = new double[L];
 			double[] mixingPartOfExchangeChemicalPotentials;
-			Lagrmix_PolA(3, _volumeFractions, out mixingPartOfExchangeChemicalPotentials);
+			Lagrmix_PolA(NumberOfComponents, _volumeFractions, out mixingPartOfExchangeChemicalPotentials);
 			double osmoticPressure = 0;
 			osmoticPressure =mixingPartModule.CalculateMixingFreeEnergy(_volumeFractions);
-			for (int i = 1; i < 3; i++)
+			for (int i = 1; i < NumberOfComponents; i++)
 				osmoticPressure -= _volumeFractions[i] * mixingPartOfExchangeChemicalPotentials[i];
-			F[0] = (mixingPartOfExchangeChemicalPotentials[0] - chemPotAtTheBorder[0]) * (mixingPartOfExchangeChemicalPotentials[0] - chemPotAtTheBorder[0]);//solvent
-			F[1] = (mixingPartOfExchangeChemicalPotentials[1] - chemPotAtTheBorder[1]) * (mixingPartOfExchangeChemicalPotentials[1] - chemPotAtTheBorder[1]);//bio
+			//F[0] = (mixingPartOfExchangeChemicalPotentials[0] - chemPotAtTheBorder[0]) * (mixingPartOfExchangeChemicalPotentials[0] - chemPotAtTheBorder[0]);//solvent
+			//F[1] = (mixingPartOfExchangeChemicalPotentials[1] - chemPotAtTheBorder[1]) * (mixingPartOfExchangeChemicalPotentials[1] - chemPotAtTheBorder[1]);//bio
 			F[0] = osmoticPressure * osmoticPressure;
+			for(int i=1;i<NumberOfComponents-1;i++)
+				F[i] = (mixingPartOfExchangeChemicalPotentials[i] - chemPotAtTheBorder[i]) * (mixingPartOfExchangeChemicalPotentials[i] - chemPotAtTheBorder[i]);//bio
+
 		}
 		static void BrushEquations(double[] X, out double[] F, int L)
         {
