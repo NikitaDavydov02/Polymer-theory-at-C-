@@ -539,16 +539,27 @@ namespace Polymer_brush
         {
 			double nu = 2;
 			double y_cur = point_y;
-			fipolimer[1] = X[0];
-			fipolimer[2] = X[1];
-			fipolimer[0] = 1 - fipolimer[1] - fipolimer[2];
+
+
+			double volumeFractionSum = 0;
+			for (int i = 0; i < NumberOfComponents - 1; i++)
+			{
+				fipolimer[i+1] = X[i];
+				volumeFractionSum += X[i];
+			}
+			fipolimer[0] = 1 - volumeFractionSum;
 			double[] mixingPartOfExchangeChemicalPotentials;
 			//!Calculate values that in ideal case must be equal to Lagrangian multipliers based on current concentrations
-			Lagrmix_PolA(3, fipolimer, out mixingPartOfExchangeChemicalPotentials);
+			Lagrmix_PolA(NumberOfComponents, fipolimer, out mixingPartOfExchangeChemicalPotentials);
 			F = new double[L];
 
-			F[0] = (mixingPartOfExchangeChemicalPotentials[1] - chemPotInTheBulk[1]) * (mixingPartOfExchangeChemicalPotentials[1] - chemPotInTheBulk[1]);// !bio contaminant error
-			F[1] = Math.Pow((mixingPartOfExchangeChemicalPotentials[2] + BA * (R * (y_cur - 1.0)) * (R * (y_cur - 1.0)) - Lamb_Pol),2);//!polymer error
+			//F[0] = (mixingPartOfExchangeChemicalPotentials[1] - chemPotInTheBulk[1]) * (mixingPartOfExchangeChemicalPotentials[1] - chemPotInTheBulk[1]);// !bio contaminant error
+			for(int i=0;i< NumberOfComponents - 2; i++)
+            {
+				F[i] = (mixingPartOfExchangeChemicalPotentials[i+1] - chemPotInTheBulk[i + 1]) * (mixingPartOfExchangeChemicalPotentials[i + 1] - chemPotInTheBulk[i + 1]);// !bio contaminant error
+
+			}
+			F[NumberOfComponents-2] = Math.Pow((mixingPartOfExchangeChemicalPotentials[NumberOfComponents-1] + BA * (R * (y_cur - 1.0)) * (R * (y_cur - 1.0)) - Lamb_Pol),2);//!polymer error
 
 			Console.WriteLine("BrushEquations values: " + F[0] + "  " +F[1] + " ----------------Volume fractions:   " + X[0] + "    " + X[1]);
 
