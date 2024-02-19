@@ -267,23 +267,29 @@ namespace Polymer_brush
 			//chemPotAtTheBorder[1] = chemPotInTheBulk[1];//bio
 			//Finding volume fractions at the border
 			double ERREL = Math.Pow(10, -4);
-			double[] XBorderGUESS = new double[2];
-			XBorderGUESS[0] = volumeFractionsInTheBulk[0];//this is the fraction of solvent at the border
-			XBorderGUESS[1]= volumeFractionsInTheBulk[1];//this is the fraction of biocomponnt at the border
+			double[] XBorderGUESS = new double[NumberOfComponents-1];
+			for (int i = 0; i < NumberOfComponents - 1; i++)
+				XBorderGUESS[i] = volumeFractionsInTheBulk[i];//this is the fraction of solvent at the border
+			//XBorderGUESS[1]= volumeFractionsInTheBulk[1];//this is the fraction of biocomponnt at the border
 			//XBorderGUESS[0] = 0.1;
 
 			double FNORM;
-			double[] _XBorder = new double[3];
-			DNEQNF(BorderEquations, ERREL, 2, 1000, XBorderGUESS,out _XBorder, out FNORM);
+			double[] _XBorder = new double[NumberOfComponents];
+			DNEQNF(BorderEquations, ERREL, NumberOfComponents-1, 1000, XBorderGUESS,out _XBorder, out FNORM);
 
-			double[] volFractionsAtTheBorder = new double[3];
-			volFractionsAtTheBorder[0] = _XBorder[0];
-			volFractionsAtTheBorder[1] = _XBorder[1];
-			volFractionsAtTheBorder[2] = 1 - volFractionsAtTheBorder[0] - volFractionsAtTheBorder[1];
-			Lagrmix_PolA(3, volFractionsAtTheBorder, out chemPotAtTheBorder);
+			double[] volFractionsAtTheBorder = new double[NumberOfComponents];
 
-			chemPotAtTheBorder[2] += BA * (R * (integrationMax - 1)) * (R * (integrationMax - 1));
-			Lamb_Pol = chemPotAtTheBorder[2];
+			double volumeFractionSum = 0;
+			for(int i = 0; i < NumberOfComponents - 1; i++)
+            {
+				volFractionsAtTheBorder[i] = _XBorder[i];
+				volumeFractionSum += volFractionsAtTheBorder[i];
+			}
+			volFractionsAtTheBorder[NumberOfComponents-1] = 1 - volumeFractionSum;
+			Lagrmix_PolA(NumberOfComponents, volFractionsAtTheBorder, out chemPotAtTheBorder);
+
+			chemPotAtTheBorder[NumberOfComponents-1] += BA * (R * (integrationMax - 1)) * (R * (integrationMax - 1));
+			Lamb_Pol = chemPotAtTheBorder[NumberOfComponents - 1];
 
 			CalculateIntegral(integrationMin, integrationMax,NormalizationSubintegralValue,new List<double>() { y }, out s);
 			return s -norm;
