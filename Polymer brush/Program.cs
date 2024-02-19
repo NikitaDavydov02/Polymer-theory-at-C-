@@ -15,6 +15,11 @@ namespace Polymer_brush
 		public static double[] chemPotInTheBulk, volumeFractionsInTheBulk, Lagrbulk,  size;
 		public static double[,] chi;
 		public static double[,] etas;
+		public static double[] fractionsOfGroups;
+		public static int NumberOfComponents;
+		public static int NumberOfPolymerGroupTypes;
+		public static int chiMatrixSize;
+		
 		static double[] Xbrush, fipolimer;
 		static double point_y;
 		static StreamWriter sw;
@@ -54,10 +59,11 @@ namespace Polymer_brush
             {
 				//y_cur += aA / R;
 				//!write(*, *) 'Phi poly subroutine is called'
-				Xbrush = new double[3];
+				Xbrush = new double[NumberOfComponents];
+				//Xbrush - everithing exept solvent
 				FindVolumeFractionsInTheBrushForPoint(out Xbrush, y_cur); //  !calculates concentration profile in the brush after the solution is found
 
-				
+			
 				fipolimer[1] = Xbrush[0];//biocomponent // ! local compsition of the brush at point y_cur(1)-solvent(2) - biocomponent(3) - polymer
 				fipolimer[2] = Xbrush[1];//polymer
 				fipolimer[0] = 1.0 - fipolimer[1] - fipolimer[2];//solvent
@@ -105,21 +111,36 @@ namespace Polymer_brush
 			//!areaPerChain_MAX = 3.0d0 * aA * *2 * (3.1415926 * 4.0 * rNB * *2 / 3.0d0) **(1.0 / 3.0)
 			//				 !write(*, *) BA,R,rNB* aA, areaPerChain,10.0 * (nu + 1.1) * aA * *2,y_max,BA * (R * (y_max - 1.0)) * *2,
 			//!stop
+			NumberOfComponents = 3;
+			NumberOfPolymerGroupTypes = 2;
 
-			 size = new double[3];
+
+			 size = new double[NumberOfComponents];
 			 size[0] = 1.0;// ! solvent
 			 size[1] = 3.0;// ! bioadditive
 			 size[2] = rNA;// polymer
 
-			chi = new double[3, 3];
-
+			chi = new double[NumberOfComponents+NumberOfPolymerGroupTypes-1, NumberOfComponents + NumberOfPolymerGroupTypes - 1];
+			chiMatrixSize = NumberOfComponents + NumberOfPolymerGroupTypes - 1;
 			//solv
 			//bio
 			//pol
+			fractionsOfGroups = new double[NumberOfPolymerGroupTypes];
+			fractionsOfGroups[0] = 0.5;
+			fractionsOfGroups[1] = 0.5;
 
+
+			//Solvent with other
 			chi[0, 1] = 0;//! solv - bio
-			chi[0, 2] = 5;//! solv - polym
-			chi[1, 2] = 0;//d0! bio - polym
+			chi[0, 2] = 1;//! solv - polym first group
+			chi[0, 3] = -1;//! solv - polym second group
+
+			//Bio with other
+			chi[1, 2] = -1;
+			chi[1, 3] = 0;
+
+			//Polymer A with other
+			chi[2, 3] = 1;//d0! bio - polym first group
 			/* does not work
 			 * chi[0, 1] = 1;//! solv - bio
 			chi[0, 2] = 1;//! solv - polym
@@ -131,16 +152,16 @@ namespace Polymer_brush
 				chi[0, 2] = 0.6;//! solv - polym
 				chi[1, 2] = -0.8;//d0! bio - polym*/
 
-			for (int i = 0; i < 3; i++)
+			for (int i = 0; i < chiMatrixSize; i++)
 			{
 				chi[i, i] = 0;
-				for (int j = i + 1; j < 3; j++)
+				for (int j = i + 1; j < chiMatrixSize; j++)
 					chi[j, i] = chi[i, j];
 			}
 
-			etas = new double[3, 3];
-			for (int i = 0; i < 3; i++)
-				for (int j = 0; j < 3; j++)
+			etas = new double[chiMatrixSize, chiMatrixSize];
+			for (int i = 0; i < chiMatrixSize; i++)
+				for (int j = 0; j < chiMatrixSize; j++)
 					etas[i, j] = Math.Exp(-3*chi[i, j]/z);
 
 			//!give bulk composition and calculate Lagr.multipliers and osm pressure in the bulk:
