@@ -138,31 +138,21 @@ namespace Polymer_brush
 			fractionsOfGroups = new double[NumberOfPolymerGroupTypes];
 			for (int i = 0; i < NumberOfPolymerGroupTypes; i++)
 				fractionsOfGroups[i] = 0.1;
-			fractionsOfGroups[0] = 0.5;
-			fractionsOfGroups[1] = 0.5;
+			fractionsOfGroups[0] = 1;
+			fractionsOfGroups[1] = 0;
 
 
 			//Solvent with other
-			chi[0, 1] = 0;//! solv - bio
-			chi[0, 2] = 1;//! solv - polym first group
-			chi[0, 3] = -1;//! solv - polym second group
+			chi[0, 1] = 1;//! solv - bio
+			chi[0, 2] = 2.0;//! solv - polym first group
+			//chi[0, 3] = 1.0;//! solv - polym second group
 
 			//Bio with other
-			chi[1, 2] = -1;
-			chi[1, 3] = 0;
+			chi[1, 2] = -0.5; //bio- polym first group
+			//chi[1, 3] = -0.5;  //bio- polym second group
 
 			//Polymer A with other
-			chi[2, 3] = 1;//d0! bio - polym first group
-			/* does not work
-			 * chi[0, 1] = 1;//! solv - bio
-			chi[0, 2] = 1;//! solv - polym
-			chi[1, 2] = -0.8;//d0! bio - polym*/
-
-
-			/*	work
-			 *	chi[0, 1] = 1;//! solv - bio
-				chi[0, 2] = 0.6;//! solv - polym
-				chi[1, 2] = -0.8;//d0! bio - polym*/
+			//chi[2, 3] = 0;
 
 			for (int i = 0; i < chiMatrixSize; i++)
 			{
@@ -180,7 +170,7 @@ namespace Polymer_brush
 			volumeFractionsInTheBulk = new double[NumberOfComponents];
 			for(int i=0;i<NumberOfComponents;i++)
 				volumeFractionsInTheBulk[i] = 0.0;
-			volumeFractionsInTheBulk[0] = 0.999;
+			volumeFractionsInTheBulk[0] = 0.98;
 			volumeFractionsInTheBulk[1] = 1.0 - volumeFractionsInTheBulk[0];
 
 			chemPotInTheBulk = new double[NumberOfComponents];
