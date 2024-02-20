@@ -138,21 +138,21 @@ namespace Polymer_brush
 			fractionsOfGroups = new double[NumberOfPolymerGroupTypes];
 			for (int i = 0; i < NumberOfPolymerGroupTypes; i++)
 				fractionsOfGroups[i] = 0.1;
-			fractionsOfGroups[0] = 1;
-			fractionsOfGroups[1] = 0;
+			fractionsOfGroups[0] = 0.9;
+			fractionsOfGroups[1] = 0.1;
 
 
 			//Solvent with other
-			chi[0, 1] = 1;//! solv - bio
-			chi[0, 2] = 2.0;//! solv - polym first group
-			//chi[0, 3] = 1.0;//! solv - polym second group
+			chi[0, 1] = 2;//! solv - bio
+			chi[0, 2] = -2;//! solv - polym first group
+			chi[0, 3] = -2;//! solv - polym second group
 
 			//Bio with other
-			chi[1, 2] = -0.5; //bio- polym first group
-			//chi[1, 3] = -0.5;  //bio- polym second group
+			chi[1, 2] = -2; //bio- polym first group
+			chi[1, 3] = -2;  //bio- polym second group
 
 			//Polymer A with other
-			//chi[2, 3] = 0;
+			chi[2, 3] = 0;
 
 			for (int i = 0; i < chiMatrixSize; i++)
 			{
@@ -289,7 +289,7 @@ namespace Polymer_brush
 		static void CalculateIntegral(double integrationMin, double integrationMax, Func<double,List<double>,double> func,List<double> parameters, out double s)
         {
 			double EPS = 0.1;
-			int JMAX = 8;
+			int JMAX = 10;
 			double old_s = -1 * Math.Pow(10, -30);
 			s = 0;
 			for(int n = 0; n < JMAX;n++)
