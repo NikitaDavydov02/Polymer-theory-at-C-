@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.IO;
-
+using System.Runtime.Remoting.Messaging;
 
 namespace Polymer_brush
 {
@@ -13,7 +13,10 @@ namespace Polymer_brush
 		public static double R, BA, y_min, y_max, yacc, aA, rNA, rNB, areaPerChain, Lamb_Pol;
 		public static double rN, nu, coe, pi, osmbulk, y_edge, y_cur, P_AB;
 		public static double[] chemPotInTheBulk, volumeFractionsInTheBulk, Lagrbulk,  size;
-		public static double[,] chi;
+		public static double[] chemPotOutsideOfTheStep;
+		public static double osmoticPressureOutsideOfTheStep;
+
+        public static double[,] chi;
 		public static double[,] etas;
 		public static double[] fractionsOfGroups;
 		public static int NumberOfComponents;
@@ -44,11 +47,19 @@ namespace Polymer_brush
 			double u_sol = 0;
 			double u_pol = 0;
 			double u_bio=0;
-			sw = new StreamWriter("profile.txt");
-			sw.WriteLine("y_cur    solvent    bio    polymer    osm_pressure");
-
 			Enter();
-			y_edge = BisectionSolve(y_min, y_max, yacc,NormalizationFunction,new List<double>());
+			List<KeyValuePair<double, List<double>>> mixingEnergy = CalculateMixingEnergyProfile(2, 0, 20);
+			using(StreamWriter sw = new StreamWriter("mixingFenergyOfSolventAndPolymer.txt"))
+			{
+				foreach (KeyValuePair<double, List<double>> pair in mixingEnergy)
+					sw.WriteLine(pair.Key + "  ;  " + pair.Value[0] + ";"+ pair.Value[1] + ";");
+			}
+            double[] segregationPoints = FindSegregationPointsBetweenSolventAndPolymer();
+            return;
+            sw = new StreamWriter("profile.txt");
+            sw.WriteLine("y_cur    solvent    bio    polymer    osm_pressure");
+
+            y_edge = BisectionSolve(y_min, y_max, yacc,NormalizationFunction,new List<double>());
 			y_cur = y_min;
 
 			//!Calculate polymer concentration at the start position(A / B boundary)
@@ -128,9 +139,10 @@ namespace Polymer_brush
 				size[i] = 1.0;
 			 size[0] = 1.0;// ! solvent
 			 size[1] = 3.0;// ! bioadditive
-			 size[2] = rNA;// polymer
+             //size[2] = rNA;// polymer
+            size[2] = 1.0;
 
-			chi = new double[NumberOfComponents+NumberOfPolymerGroupTypes-1, NumberOfComponents + NumberOfPolymerGroupTypes - 1];
+            chi = new double[NumberOfComponents+NumberOfPolymerGroupTypes-1, NumberOfComponents + NumberOfPolymerGroupTypes - 1];
 			chiMatrixSize = NumberOfComponents + NumberOfPolymerGroupTypes - 1;
 			//solv
 			//bio
@@ -138,18 +150,18 @@ namespace Polymer_brush
 			fractionsOfGroups = new double[NumberOfPolymerGroupTypes];
 			for (int i = 0; i < NumberOfPolymerGroupTypes; i++)
 				fractionsOfGroups[i] = 0.1;
-			fractionsOfGroups[0] = 0.9;
-			fractionsOfGroups[1] = 0.1;
+			fractionsOfGroups[0] = 0.5;
+			fractionsOfGroups[1] = 0.5;
 
 
 			//Solvent with other
-			chi[0, 1] = 2;//! solv - bio
-			chi[0, 2] = -2;//! solv - polym first group
-			chi[0, 3] = -2;//! solv - polym second group
+			chi[0, 1] = -1;//! solv - bio
+			chi[0, 2] = 2.6;//! solv - polym first group
+			chi[0, 3] = 2.6;//! solv - polym second group
 
 			//Bio with other
-			chi[1, 2] = -2; //bio- polym first group
-			chi[1, 3] = -2;  //bio- polym second group
+			chi[1, 2] = -1; //bio- polym first group
+			chi[1, 3] = -1;  //bio- polym second group
 
 			//Polymer A with other
 			chi[2, 3] = 0;
@@ -170,7 +182,7 @@ namespace Polymer_brush
 			volumeFractionsInTheBulk = new double[NumberOfComponents];
 			for(int i=0;i<NumberOfComponents;i++)
 				volumeFractionsInTheBulk[i] = 0.0;
-			volumeFractionsInTheBulk[0] = 0.98;
+			volumeFractionsInTheBulk[0] = 0.999;
 			volumeFractionsInTheBulk[1] = 1.0 - volumeFractionsInTheBulk[0];
 
 			chemPotInTheBulk = new double[NumberOfComponents];
@@ -397,7 +409,7 @@ namespace Polymer_brush
 			XBrushGUESS[0] = Math.Pow(10, -8);//this is the fraction of biocomponent in the brush
 			XBrushGUESS[1]=0.97;//this is the fraction of polymer in the brush
 			double FNORM;
-
+			
 			DNEQNF(BrushEquations, ERREL, NumberOfComponents - 1, ITMAX, XBrushGUESS, out XBrushReduced, out FNORM);
 
 			double volumeFractionsSum = 0;
@@ -407,7 +419,39 @@ namespace Polymer_brush
 				volumeFractionsSum += XBrush[i];
 			}
 			XBrush[0] = 1- volumeFractionsSum;
+			double[] XInside;
+			//TryingToFindStepInTheBrush(out XInside, y_cur, XBrush);
 		}
+		static void TryingToFindStepInTheBrush(out double[] XInside, double y_cur, double[] volFractionsOutside)
+		{
+            double ERREL = Math.Pow(10, -4);
+            point_y = y_cur;
+            int ITMAX = 600;
+            double[] XBrushGUESS = new double[NumberOfComponents - 1];
+            double[] XBrushReduced = new double[NumberOfComponents - 1];
+            XInside = new double[NumberOfComponents];
+            XBrushGUESS[0] = Math.Pow(10, -8);//this is the fraction of biocomponent in the brush
+            XBrushGUESS[1] = 0.98f;//this is the fraction of polymer in the brush
+            double FNORM;
+
+			chemPotOutsideOfTheStep = new double[NumberOfComponents];
+            Lagrmix_PolA(NumberOfComponents, volFractionsOutside, out chemPotOutsideOfTheStep);
+			osmoticPressureOutsideOfTheStep = CalculateOsmoticPressure(volFractionsOutside);
+
+            DNEQNF(StepEquations, ERREL, NumberOfComponents - 1, ITMAX, XBrushGUESS, out XBrushReduced, out FNORM);
+
+			
+            double volumeFractionsSum = 0;
+            for (int i = 1; i < NumberOfComponents; i++)
+            {
+                XInside[i] = XBrushReduced[i - 1];
+                volumeFractionsSum += XInside[i];
+            }
+            XInside[0] = 1 - volumeFractionsSum;
+			if (!double.IsNaN(XInside[0]))
+				if (Math.Abs(XInside[0] - volFractionsOutside[0]) > 0.01)
+					;
+        }
 		delegate void NonlinearSystem(double[] X, out double[] F, int L);
 		static void DNEQNF(NonlinearSystem Func, double ERREL, int L, int ITMAX, double[] XGuess, out double[] X, out double FNORM)
 		{
@@ -502,7 +546,34 @@ namespace Polymer_brush
 					return true;
 			return false;
 		}
-		static void BorderEquations(double[] X, out double[] F, int L)
+        static void StepEquations(double[] X, out double[] F, int L)
+        {
+            double nu = 2;
+            double y_cur = point_y;
+            double volumeFractionSum = 0;
+            for (int i = 0; i < NumberOfComponents - 1; i++)
+            {
+                fipolimer[i + 1] = X[i];
+                volumeFractionSum += X[i];
+            }
+            fipolimer[0] = 1 - volumeFractionSum;
+            double[] mixingPartOfExchangeChemicalPotentials;
+            //!Calculate values that in ideal case must be equal to Lagrangian multipliers based on current concentrations
+            Lagrmix_PolA(NumberOfComponents, fipolimer, out mixingPartOfExchangeChemicalPotentials);
+            F = new double[L];
+			double insideOsmoticPressure = CalculateOsmoticPressure(fipolimer);
+
+            //F[0] = (mixingPartOfExchangeChemicalPotentials[1] - chemPotInTheBulk[1]) * (mixingPartOfExchangeChemicalPotentials[1] - chemPotInTheBulk[1]);// !bio contaminant error
+            /* for (int i = 0; i < NumberOfComponents - 2; i++)
+             {
+                 F[i] = (mixingPartOfExchangeChemicalPotentials[i + 1] - chemPotOutsideOfTheStep[i + 1]) * (mixingPartOfExchangeChemicalPotentials[i + 1] - chemPotOutsideOfTheStep[i + 1]);// !bio contaminant error
+
+             }*/
+            F[0] = (mixingPartOfExchangeChemicalPotentials[2] - chemPotOutsideOfTheStep[2]) * (mixingPartOfExchangeChemicalPotentials[2] - chemPotOutsideOfTheStep[2]);// !bio contaminant error
+
+			F[1] = (insideOsmoticPressure - osmoticPressureOutsideOfTheStep) * (insideOsmoticPressure - osmoticPressureOutsideOfTheStep);
+        }
+        static void BorderEquations(double[] X, out double[] F, int L)
         {
 			double[] _volumeFractions = new double[NumberOfComponents];
 			double volumeFractionSum = 0;
@@ -515,10 +586,7 @@ namespace Polymer_brush
 			F = new double[L];
 			double[] mixingPartOfExchangeChemicalPotentials;
 			Lagrmix_PolA(NumberOfComponents, _volumeFractions, out mixingPartOfExchangeChemicalPotentials);
-			double osmoticPressure = 0;
-			osmoticPressure =mixingPartModule.CalculateMixingFreeEnergy(_volumeFractions);
-			for (int i = 1; i < NumberOfComponents; i++)
-				osmoticPressure -= _volumeFractions[i] * mixingPartOfExchangeChemicalPotentials[i];
+			double osmoticPressure = CalculateOsmoticPressure(_volumeFractions);
 			//F[0] = (mixingPartOfExchangeChemicalPotentials[0] - chemPotAtTheBorder[0]) * (mixingPartOfExchangeChemicalPotentials[0] - chemPotAtTheBorder[0]);//solvent
 			//F[1] = (mixingPartOfExchangeChemicalPotentials[1] - chemPotAtTheBorder[1]) * (mixingPartOfExchangeChemicalPotentials[1] - chemPotAtTheBorder[1]);//bio
 			F[0] = osmoticPressure * osmoticPressure;
@@ -555,90 +623,163 @@ namespace Polymer_brush
 			Console.WriteLine("BrushEquations values: " + F[0] + "  " +F[1] + " ----------------Volume fractions:   " + X[0] + "    " + X[1]);
 
 		}
+		static double CalculateOsmoticPressure(double[] _volumeFractions)
+		{
+            double[] mixingPartOfExchangeChemicalPotentials;
+            Lagrmix_PolA(NumberOfComponents, _volumeFractions, out mixingPartOfExchangeChemicalPotentials);
+            double osmoticPressure = 0;
+            osmoticPressure = mixingPartModule.CalculateMixingFreeEnergy(_volumeFractions);
+            for (int i = 1; i < NumberOfComponents; i++)
+                osmoticPressure -= _volumeFractions[i] * mixingPartOfExchangeChemicalPotentials[i];
+			return osmoticPressure;
+        }
+		static List<KeyValuePair<double,List<double>>> CalculateMixingEnergyProfile(int AcomponentIndex, int BcomponentIndex, int numberOfPoints)
+		{
+			List<KeyValuePair<double, List<double>>> output = new List<KeyValuePair<double, List<double>>>();
+			double step = 0.99 / (numberOfPoints - 1);
+			double[] volumeFractions = new double[NumberOfComponents];
+			//double volumeFractionSum = 0;
+			for(int i = 0; i < NumberOfComponents; i++)
+				volumeFractions[i] = 0;
+			volumeFractions[AcomponentIndex] = 0.005;
+            volumeFractions[BcomponentIndex] = 1- volumeFractions[AcomponentIndex];
+			while (volumeFractions[AcomponentIndex] < 1)
+			{
+				List<double> value = new List<double>();
+                double Fmix = mixingPartModule.CalculateMixingFreeEnergy(volumeFractions);
+				double[] exchangeChemPotentials;
+				Lagrmix(NumberOfComponents, volumeFractions, out exchangeChemPotentials);
+				value.Add(Fmix);
+				value.Add(exchangeChemPotentials[2]);
+				output.Add(new KeyValuePair<double, List<double>>(volumeFractions[AcomponentIndex],value));
+				volumeFractions[AcomponentIndex] += step;
+				volumeFractions[BcomponentIndex] = 1 - volumeFractions[AcomponentIndex];
+			}
 
-		//static double CalculateMixingFreeEnergy(double[] X)
-  //      {
-		//	double a = X[0] * Math.Log(X[0]) + X[1] * Math.Log(X[1]) /  size[1];
-		//	double b = chi[1, 2] * X[1] * X[2];
-		//	double c = chi[0, 1] * X[0] * X[1];
-		//	double d = chi[0, 2] * X[0] * X[2];
-		//	return a + b + c + d;
-		//}
-		//static double CalculateGugenheimMixingFreeEnergy(double[] X)
-		//{
-		//	int n = X.Length;
-		//	double translationSum = X[0] * Math.Log(X[0]) + X[1] * Math.Log(X[1]) /  size[1];
-		//	double[] XX = CalculateGugenheimCorrelations(X, etas);
-		//	double mixingSum = 0;
-		//	for (int i = 0; i < n; i++)
-		//		for (int j = 0; j < i; j++)
-		//			mixingSum += chi[i, j] * XX[i] * XX[j] * X[i] * X[j] * etas[i, j];
+			return output;
+        }
+		static double[] FindSegregationPointsBetweenSolventAndPolymer()
+		{
+            double ERREL = Math.Pow(10, -4);
+            int ITMAX = 600;
+            double[] XGUESS = new double[2];
+            double[] X = new double[2];
+			XGUESS[0] = 0.000001;
+			XGUESS[1] = 0.999999;
+            double FNORM;
+            DNEQNF(SegregationEquations, ERREL, 2, ITMAX, XGUESS, out X, out FNORM);
+			return X;
+        }
+        static void SegregationEquations(double[] X, out double[] F, int L)
+        {
+            double nu = 2;
 
-		//	/*double b = chi[1, 2] * X[1] * X[2];
-		//	double c = chi[0, 1] * X[0] * X[1];
-		//	double d = chi[0, 2] * X[0] * X[2];*/
-		//	double output = translationSum + mixingSum;
-		//	return output;
-		//}
-		//static double CalculateExchangeChemialPotentialOfComponent(double[] X, int componenIndex)
-  //      {
-		//	double f = CalculateMixingFreeEnergy(X);
-		//	//double f = CalculateGugenheimMixingFreeEnergy(X);
-		//	double x = X[componenIndex];
-		//	double max_dx = 1 - x;
-  //          if (X[0] < max_dx)
-		//		max_dx = X[0];
-		//	double dx = 0.01*x;
-		//	if (dx == 0)
-		//		dx = 0.01;
-		//	if (dx > max_dx)
-		//		dx = max_dx;
+            double[] mixingPartOfExchangeChemicalPotentials_0;
+			double[] volumeFractions_0 = new double[3];
+			volumeFractions_0[0] = X[0];
+            volumeFractions_0[1] = 0;
+            volumeFractions_0[2] = 1-X[0];
+            //!Calculate values that in ideal case must be equal to Lagrangian multipliers based on current concentrations
+            Lagrmix(3, volumeFractions_0, out mixingPartOfExchangeChemicalPotentials_0);
 
-		//	double oldSolventVolumeFraction = X[0];
-		//	double x_dx = x + dx;
-		//	X[componenIndex] = x_dx;
-		//	X[0] -= dx;
-		//	double f_df = CalculateMixingFreeEnergy(X);
-		//	//double f_df = CalculateGugenheimMixingFreeEnergy(X);
-		//	X[0] = oldSolventVolumeFraction;
-		//	X[componenIndex] = x;
-		//	return (f_df - f) / dx;
+            double[] mixingPartOfExchangeChemicalPotentials_1;
+            double[] volumeFractions_1 = new double[3];
+            volumeFractions_1[0] = X[1];
+            volumeFractions_1[1] = 0;
+            volumeFractions_1[2] = 1 - X[1];
+            //!Calculate values that in ideal case must be equal to Lagrangian multipliers based on current concentrations
+            Lagrmix(3, volumeFractions_1, out mixingPartOfExchangeChemicalPotentials_1);
+            F = new double[L];
+
+			//F[0] = (mixingPartOfExchangeChemicalPotentials[1] - chemPotInTheBulk[1]) * (mixingPartOfExchangeChemicalPotentials[1] - chemPotInTheBulk[1]);// !bio contaminant error
+			F[0] = (mixingPartOfExchangeChemicalPotentials_0[1] - mixingPartOfExchangeChemicalPotentials_1[1]) * (mixingPartOfExchangeChemicalPotentials_0[1] - mixingPartOfExchangeChemicalPotentials_1[1]);
+			double secondEquation = mixingPartModule.CalculateMixingFreeEnergy(volumeFractions_1) - mixingPartModule.CalculateMixingFreeEnergy(volumeFractions_0) - (volumeFractions_1[1] - volumeFractions_0[1]) * mixingPartOfExchangeChemicalPotentials_0[1];
+			F[1] = Math.Pow(secondEquation,2);
+        }
+
+        //static double CalculateMixingFreeEnergy(double[] X)
+        //      {
+        //	double a = X[0] * Math.Log(X[0]) + X[1] * Math.Log(X[1]) /  size[1];
+        //	double b = chi[1, 2] * X[1] * X[2];
+        //	double c = chi[0, 1] * X[0] * X[1];
+        //	double d = chi[0, 2] * X[0] * X[2];
+        //	return a + b + c + d;
+        //}
+        //static double CalculateGugenheimMixingFreeEnergy(double[] X)
+        //{
+        //	int n = X.Length;
+        //	double translationSum = X[0] * Math.Log(X[0]) + X[1] * Math.Log(X[1]) /  size[1];
+        //	double[] XX = CalculateGugenheimCorrelations(X, etas);
+        //	double mixingSum = 0;
+        //	for (int i = 0; i < n; i++)
+        //		for (int j = 0; j < i; j++)
+        //			mixingSum += chi[i, j] * XX[i] * XX[j] * X[i] * X[j] * etas[i, j];
+
+        //	/*double b = chi[1, 2] * X[1] * X[2];
+        //	double c = chi[0, 1] * X[0] * X[1];
+        //	double d = chi[0, 2] * X[0] * X[2];*/
+        //	double output = translationSum + mixingSum;
+        //	return output;
+        //}
+        //static double CalculateExchangeChemialPotentialOfComponent(double[] X, int componenIndex)
+        //      {
+        //	double f = CalculateMixingFreeEnergy(X);
+        //	//double f = CalculateGugenheimMixingFreeEnergy(X);
+        //	double x = X[componenIndex];
+        //	double max_dx = 1 - x;
+        //          if (X[0] < max_dx)
+        //		max_dx = X[0];
+        //	double dx = 0.01*x;
+        //	if (dx == 0)
+        //		dx = 0.01;
+        //	if (dx > max_dx)
+        //		dx = max_dx;
+
+        //	double oldSolventVolumeFraction = X[0];
+        //	double x_dx = x + dx;
+        //	X[componenIndex] = x_dx;
+        //	X[0] -= dx;
+        //	double f_df = CalculateMixingFreeEnergy(X);
+        //	//double f_df = CalculateGugenheimMixingFreeEnergy(X);
+        //	X[0] = oldSolventVolumeFraction;
+        //	X[componenIndex] = x;
+        //	return (f_df - f) / dx;
 
 
-		//}
-		//static double[] CalculateGugenheimCorrelations(double[] alphas, double[,] etas)
-  //      {
-		//	int n = alphas.Length;
-		//	double[] XX = new double[n];
-		//	double[] newXX = new double[n];
-		//	double initialGuess = 1;
-		//	for(int i = 0; i < n; i++)
-  //          {
-		//		XX[i] = initialGuess;
-		//		initialGuess -= 0.0001;
-		//	}
-		//	bool converged = false;
-  //          while (!converged)
-  //          {
-		//		for (int i = 0; i < n; i++)
-		//		{
-		//			double sum = 0;
-		//			for (int j = 0; j < n; j++)
-		//				sum += alphas[j] * XX[j] * etas[i, j];
-		//			newXX[i] = 1 / sum;
-		//		}
-		//		for (int i = 0; i < n; i++)
-		//			XX[i] = (XX[i] + newXX[i]) / 2;
-		//		converged = true;
-		//		for (int i = 0; i < n; i++)
-		//			if (Math.Abs(XX[i] - newXX[i]) > Math.Pow(10, -12))
-		//			{
-		//				converged = false;
-		//				break;
-		//			}
-		//	}
-		//	return XX;
+        //}
+        //static double[] CalculateGugenheimCorrelations(double[] alphas, double[,] etas)
+        //      {
+        //	int n = alphas.Length;
+        //	double[] XX = new double[n];
+        //	double[] newXX = new double[n];
+        //	double initialGuess = 1;
+        //	for(int i = 0; i < n; i++)
+        //          {
+        //		XX[i] = initialGuess;
+        //		initialGuess -= 0.0001;
+        //	}
+        //	bool converged = false;
+        //          while (!converged)
+        //          {
+        //		for (int i = 0; i < n; i++)
+        //		{
+        //			double sum = 0;
+        //			for (int j = 0; j < n; j++)
+        //				sum += alphas[j] * XX[j] * etas[i, j];
+        //			newXX[i] = 1 / sum;
+        //		}
+        //		for (int i = 0; i < n; i++)
+        //			XX[i] = (XX[i] + newXX[i]) / 2;
+        //		converged = true;
+        //		for (int i = 0; i < n; i++)
+        //			if (Math.Abs(XX[i] - newXX[i]) > Math.Pow(10, -12))
+        //			{
+        //				converged = false;
+        //				break;
+        //			}
+        //	}
+        //	return XX;
 
-		//}
-	} 
+        //}
+    } 
 }

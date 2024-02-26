@@ -34,8 +34,8 @@ namespace Polymer_brush
 		}*/
 		public double CalculateMixingFreeEnergy(double[] X)
         {
-			//return CalculateFloryMixingFreeEnergy(X);
-			return CalculateGugenheimMixingFreeEnergy(X);
+			return CalculateFloryMixingFreeEnergy(X);
+			//return CalculateGugenheimMixingFreeEnergy(X);
 		}
 		private double[] CalculateFunctionalGroupsMolarFractions(double[] XofMolecules)
         {
@@ -50,15 +50,16 @@ namespace Polymer_brush
 		{
 			double[] X = CalculateFunctionalGroupsMolarFractions(XofMolecules);
 			double a = 0;
-			for(int i=0;i<Program.NumberOfComponents-1;i++)
-				a += XofMolecules[i] * Math.Log(XofMolecules[i]) / Program.size[i];
+			for(int i=0;i<Program.NumberOfComponents;i++)
+				if(XofMolecules[i]!=0)
+					a += XofMolecules[i] * Math.Log(XofMolecules[i]) / Program.size[i];
 			//a=X[0] * Math.Log(X[0]) + X[1] * Math.Log(X[1]) / Program.size[1];
 			/*double b = Program.chi[1, 2] * X[1] * X[2];
 			double c = Program.chi[0, 1] * X[0] * X[1];
 			double d = Program.chi[0, 2] * X[0] * X[2];*/
 			for (int i = 0; i < Program.chiMatrixSize; i++)
 				for (int j = 0;j < Program.chiMatrixSize; j++)
-					if(j>i)
+					if(j>i && X[i] != 0	&& X[j]!=0)
 						a+=Program.chi[i, j] * X[i] * X[j];
 			//return a + b + c + d;
 			return a;
@@ -69,12 +70,14 @@ namespace Polymer_brush
 			int n = X.Length;
 			double translationSum = 0;
 			for (int i = 0; i < Program.NumberOfComponents - 1; i++)
-				translationSum += XofMolecules[i] * Math.Log(XofMolecules[i]) / Program.size[i]; 
+				if(X[i]!=0)
+					translationSum += XofMolecules[i] * Math.Log(XofMolecules[i]) / Program.size[i]; 
 			double[] XX = CalculateGugenheimCorrelations(X, Program.etas);
 			double mixingSum = 0;
 			for (int i = 0; i < n; i++)
 				for (int j = 0; j < i; j++)
-					mixingSum += Program.chi[i, j] * XX[i] * XX[j] * X[i] * X[j] * Program.etas[i, j];
+                    if (X[i] != 0 && X[j] != 0)
+                        mixingSum += Program.chi[i, j] * XX[i] * XX[j] * X[i] * X[j] * Program.etas[i, j];
 
 			/*double b = chi[1, 2] * X[1] * X[2];
 			double c = chi[0, 1] * X[0] * X[1];
