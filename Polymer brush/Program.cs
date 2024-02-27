@@ -138,10 +138,11 @@ namespace Polymer_brush
 			 size = new double[NumberOfComponents];
 			for (int i = 0; i < NumberOfComponents; i++)
 				size[i] = 1.0;
+
 			 size[0] = 1.0;// ! solvent
 			 size[1] = 3.0;// ! bioadditive
-             //size[2] = rNA;// polymer
-            size[2] = 60.0;
+             size[2] = rNA;// polymer
+            //size[2] = 60.0;
 
             chi = new double[NumberOfComponents+NumberOfPolymerGroupTypes-1, NumberOfComponents + NumberOfPolymerGroupTypes - 1];
 			chiMatrixSize = NumberOfComponents + NumberOfPolymerGroupTypes - 1;
@@ -151,14 +152,14 @@ namespace Polymer_brush
 			fractionsOfGroups = new double[NumberOfPolymerGroupTypes];
 			for (int i = 0; i < NumberOfPolymerGroupTypes; i++)
 				fractionsOfGroups[i] = 0.1;
-			fractionsOfGroups[0] = 0.5;
-			fractionsOfGroups[1] = 0.5;
+			fractionsOfGroups[0] = 1;
+			fractionsOfGroups[1] = 0;
 
 
 			//Solvent with other
 			chi[0, 1] = -1;//! solv - bio
-			chi[0, 2] =1.5;//! solv - polym first group
-			chi[0, 3] = 1.5;//! solv - polym second group
+			chi[0, 2] =0.5;//! solv - polym first group
+			chi[0, 3] = 0.5;//! solv - polym second group
 
 			//Bio with other
 			chi[1, 2] = -1; //bio- polym first group
@@ -183,7 +184,7 @@ namespace Polymer_brush
 			volumeFractionsInTheBulk = new double[NumberOfComponents];
 			for(int i=0;i<NumberOfComponents;i++)
 				volumeFractionsInTheBulk[i] = 0.0;
-			volumeFractionsInTheBulk[0] = 1;
+			volumeFractionsInTheBulk[0] = 0.980;
 			volumeFractionsInTheBulk[1] = 1.0 - volumeFractionsInTheBulk[0];
 
 			chemPotInTheBulk = new double[NumberOfComponents];

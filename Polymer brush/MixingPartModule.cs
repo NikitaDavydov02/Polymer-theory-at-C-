@@ -59,8 +59,13 @@ namespace Polymer_brush
 			double d = Program.chi[0, 2] * X[0] * X[2];*/
 			for (int i = 0; i < Program.chiMatrixSize; i++)
 				for (int j = 0;j < Program.chiMatrixSize; j++)
-					if(j>i && X[i] != 0	&& X[j]!=0)
-						a+=Program.chi[i, j] * X[i] * X[j];
+					if(j>i && X[i] != 0	&& X[j] != 0)
+					{
+						if(i==0&&j==2)
+                            a += (Program.chi[i, j] + 1.2 * X[2] * X[2]) * X[i] * X[j];
+						else
+							a += Program.chi[i, j] * X[i] * X[j];
+                    }
 			//return a + b + c + d;
 			return a;
 		}
@@ -85,8 +90,21 @@ namespace Polymer_brush
 			double output = translationSum + mixingSum;
 			return output;
 		}
-		public double CalculateExchangeChemialPotentialOfComponent(double[] X, int componenIndex)
+		private double CalculateExchangeChemialPotentialOfComponentAnaliticaly(double[] X, int componenIndex)
 		{
+			if (componenIndex == 0 || componenIndex == 1)
+				return 0;
+			double output = 0;
+			output += (Math.Log(X[2]) + 1) / Program.size[2];
+            output -= (Math.Log(X[0]) + 1) / Program.size[0];
+			output += Program.chi[0, 2] * X[0];
+			output -= Program.chi[0, 2] * X[2];
+			return output;
+        }
+
+        public double CalculateExchangeChemialPotentialOfComponent(double[] X, int componenIndex)
+		{
+			
 			double f = CalculateMixingFreeEnergy(X);
 			//double f = CalculateGugenheimMixingFreeEnergy(X);
 			double x = X[componenIndex];
@@ -97,7 +115,11 @@ namespace Polymer_brush
 			if (dx == 0)
 				dx = 0.01;
 			if (dx > max_dx)
-				dx = max_dx/2;
+			{
+                dx = max_dx / 2;
+				if (max_dx == 0)
+					dx = -0.01;
+            }
 
 			double oldSolventVolumeFraction = X[0];
 			double x_dx = x + dx;
@@ -107,7 +129,9 @@ namespace Polymer_brush
 			//double f_df = CalculateGugenheimMixingFreeEnergy(X);
 			X[0] = oldSolventVolumeFraction;
 			X[componenIndex] = x;
-			return (f_df - f) / dx;
+			double output = (f_df - f) / dx;
+			//double analiticalResult = CalculateExchangeChemialPotentialOfComponentAnaliticaly(X, componenIndex);
+            return output;
 
 
 		}
