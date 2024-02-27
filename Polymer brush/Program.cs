@@ -15,6 +15,7 @@ namespace Polymer_brush
 		public static double[] chemPotInTheBulk, volumeFractionsInTheBulk, Lagrbulk,  size;
 		public static double[] chemPotOutsideOfTheStep;
 		public static double osmoticPressureOutsideOfTheStep;
+		public static double[] segregationPoints;
 
         public static double[,] chi;
 		public static double[,] etas;
@@ -54,8 +55,8 @@ namespace Polymer_brush
 				foreach (KeyValuePair<double, List<double>> pair in mixingEnergy)
 					sw.WriteLine(pair.Key + "  ;  " + pair.Value[0] + ";"+ pair.Value[1] + ";");
 			}
-            double[] segregationPoints = FindSegregationPointsBetweenSolventAndPolymer();
-            return;
+            segregationPoints = FindSegregationPointsBetweenSolventAndPolymer();
+            //return;
             sw = new StreamWriter("profile.txt");
             sw.WriteLine("y_cur    solvent    bio    polymer    osm_pressure");
 
@@ -140,7 +141,7 @@ namespace Polymer_brush
 			 size[0] = 1.0;// ! solvent
 			 size[1] = 3.0;// ! bioadditive
              //size[2] = rNA;// polymer
-            size[2] = 1.0;
+            size[2] = 60.0;
 
             chi = new double[NumberOfComponents+NumberOfPolymerGroupTypes-1, NumberOfComponents + NumberOfPolymerGroupTypes - 1];
 			chiMatrixSize = NumberOfComponents + NumberOfPolymerGroupTypes - 1;
@@ -156,8 +157,8 @@ namespace Polymer_brush
 
 			//Solvent with other
 			chi[0, 1] = -1;//! solv - bio
-			chi[0, 2] = 2.6;//! solv - polym first group
-			chi[0, 3] = 2.6;//! solv - polym second group
+			chi[0, 2] =1.5;//! solv - polym first group
+			chi[0, 3] = 1.5;//! solv - polym second group
 
 			//Bio with other
 			chi[1, 2] = -1; //bio- polym first group
@@ -182,7 +183,7 @@ namespace Polymer_brush
 			volumeFractionsInTheBulk = new double[NumberOfComponents];
 			for(int i=0;i<NumberOfComponents;i++)
 				volumeFractionsInTheBulk[i] = 0.0;
-			volumeFractionsInTheBulk[0] = 0.999;
+			volumeFractionsInTheBulk[0] = 1;
 			volumeFractionsInTheBulk[1] = 1.0 - volumeFractionsInTheBulk[0];
 
 			chemPotInTheBulk = new double[NumberOfComponents];
@@ -422,7 +423,7 @@ namespace Polymer_brush
 			double[] XInside;
 			//TryingToFindStepInTheBrush(out XInside, y_cur, XBrush);
 		}
-		static void TryingToFindStepInTheBrush(out double[] XInside, double y_cur, double[] volFractionsOutside)
+		/*static void TryingToFindStepInTheBrush(out double[] XInside, double y_cur, double[] volFractionsOutside)
 		{
             double ERREL = Math.Pow(10, -4);
             point_y = y_cur;
@@ -451,7 +452,7 @@ namespace Polymer_brush
 			if (!double.IsNaN(XInside[0]))
 				if (Math.Abs(XInside[0] - volFractionsOutside[0]) > 0.01)
 					;
-        }
+        }*/
 		delegate void NonlinearSystem(double[] X, out double[] F, int L);
 		static void DNEQNF(NonlinearSystem Func, double ERREL, int L, int ITMAX, double[] XGuess, out double[] X, out double FNORM)
 		{
@@ -546,7 +547,7 @@ namespace Polymer_brush
 					return true;
 			return false;
 		}
-        static void StepEquations(double[] X, out double[] F, int L)
+        /*static void StepEquations(double[] X, out double[] F, int L)
         {
             double nu = 2;
             double y_cur = point_y;
@@ -564,15 +565,16 @@ namespace Polymer_brush
 			double insideOsmoticPressure = CalculateOsmoticPressure(fipolimer);
 
             //F[0] = (mixingPartOfExchangeChemicalPotentials[1] - chemPotInTheBulk[1]) * (mixingPartOfExchangeChemicalPotentials[1] - chemPotInTheBulk[1]);// !bio contaminant error
-            /* for (int i = 0; i < NumberOfComponents - 2; i++)
+             for (int i = 0; i < NumberOfComponents - 2; i++)
              {
                  F[i] = (mixingPartOfExchangeChemicalPotentials[i + 1] - chemPotOutsideOfTheStep[i + 1]) * (mixingPartOfExchangeChemicalPotentials[i + 1] - chemPotOutsideOfTheStep[i + 1]);// !bio contaminant error
 
-             }*/
+             }
             F[0] = (mixingPartOfExchangeChemicalPotentials[2] - chemPotOutsideOfTheStep[2]) * (mixingPartOfExchangeChemicalPotentials[2] - chemPotOutsideOfTheStep[2]);// !bio contaminant error
 
 			F[1] = (insideOsmoticPressure - osmoticPressureOutsideOfTheStep) * (insideOsmoticPressure - osmoticPressureOutsideOfTheStep);
-        }
+        }*/
+	
         static void BorderEquations(double[] X, out double[] F, int L)
         {
 			double[] _volumeFractions = new double[NumberOfComponents];
@@ -660,12 +662,15 @@ namespace Polymer_brush
         }
 		static double[] FindSegregationPointsBetweenSolventAndPolymer()
 		{
-            double ERREL = Math.Pow(10, -4);
+            double ERREL = Math.Pow(10, -6);
             int ITMAX = 600;
             double[] XGUESS = new double[2];
             double[] X = new double[2];
 			XGUESS[0] = 0.000001;
 			XGUESS[1] = 0.999999;
+
+            XGUESS[0] = 0.02;
+            XGUESS[1] = 0.85;
             double FNORM;
             DNEQNF(SegregationEquations, ERREL, 2, ITMAX, XGUESS, out X, out FNORM);
 			return X;
