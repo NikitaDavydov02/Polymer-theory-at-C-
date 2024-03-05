@@ -28,10 +28,13 @@ namespace Polymer_brush
 		static double point_y;
 		static StreamWriter sw;
 		static StreamWriter logWriter;
+		static StreamWriter newthonWriter;
 		static double z = 6;
 		//static double[] chemPotInTheBulk;
 		static double[] chemPotAtTheBorder;
 		static MixingPartModule mixingPartModule;
+
+		static double[] XInBrushForPreviousPoint;
 		static void Main(string[] args)
 		{
 			mixingPartModule = new MixingPartModule();
@@ -52,7 +55,8 @@ namespace Polymer_brush
 			Enter();
 			List<KeyValuePair<double, List<double>>> mixingEnergy = CalculateMixingEnergyProfile(2, 0, 20);
 			logWriter = new StreamWriter("log.txt");
-			using(StreamWriter sw = new StreamWriter("mixingFenergyOfSolventAndPolymer.txt"))
+			//newthonWriter = new StreamWriter(File.Create("newthonLog.txt"));
+            using (StreamWriter sw = new StreamWriter("mixingFenergyOfSolventAndPolymer.txt"))
 			{
 				foreach (KeyValuePair<double, List<double>> pair in mixingEnergy)
 					sw.WriteLine(pair.Key + "  ;  " + pair.Value[0] + ";"+ pair.Value[1] + ";");
@@ -108,6 +112,7 @@ namespace Polymer_brush
 
 			logWriter.Close();
 			sw.Close();
+			//newthonWriter.Close();
 			Console.ReadLine();
 		}
 		static void Enter()
@@ -141,8 +146,11 @@ namespace Polymer_brush
 			NumberOfComponents = 3;
 			NumberOfPolymerGroupTypes = 2;
 
+            XInBrushForPreviousPoint= new double[NumberOfComponents-1];
+			for (int i = 0; i < NumberOfComponents - 1; i++)
+				XInBrushForPreviousPoint[i] = -0.5;
 
-			 size = new double[NumberOfComponents];
+                size = new double[NumberOfComponents];
 			for (int i = 0; i < NumberOfComponents; i++)
 				size[i] = 1.0;
 
@@ -305,7 +313,7 @@ namespace Polymer_brush
 
 			logWriter.WriteLine();
 			logWriter.WriteLine("Normalization function at y=" + y);
-			CalculateIntegral(integrationMin, integrationMax,NormalizationSubintegralValue,new List<double>() { y }, out s);
+			CalculateIntegral(integrationMin, integrationMax,NormalizationSubintegralValue,new List<double>() { y ,-1,-1}, out s);
 			return s -norm;
 
 		}
@@ -330,8 +338,10 @@ namespace Polymer_brush
                     }
 				old_s = s;
             }
-			logWriter.Close();
-			Console.WriteLine("Too many steps in q trap");
+            logWriter.Close();
+            sw.Close();
+            //newthonWriter.Close();
+            Console.WriteLine("Too many steps in q trap");
 			throw new Exception();
 
 
@@ -356,8 +366,15 @@ namespace Polymer_brush
 				double lastGoodAdd = 0;
 				for(int counter = 0; counter < numberOfSegments; counter++)
                 {
-					//double add = FindSubintegralValueForNormalization(x, integrationMax);
-					double add = func(x,parameters);
+                    //double add = FindSubintegralValueForNormalization(x, integrationMax);
+                    ///////////COMMENT THIS/////////////
+                    if (counter == 1)
+					{
+						parameters[1] = XInBrushForPreviousPoint[0];
+						parameters[2] = XInBrushForPreviousPoint[1];
+					}
+                    //////////////////////////////
+                    double add = func(x,parameters);
 					logWriter.WriteLine(indent + indent + add);
 					///////////COMMENT THIS/////////////
 					if (double.IsNaN(add))
@@ -383,7 +400,7 @@ namespace Polymer_brush
 		static double NormalizationSubintegralValue(double x, List<double> parameters)
         {
 			//Lamb_Pol = chemPotInTheBulk[2] + BA * (R * (  - 1)) * (R * (  - 1));
-			if (parameters.Count > 1)
+			if (parameters.Count > 1 && parameters[1]>=0)
 			{
                 double[] initialGuess = new double[2];
                 initialGuess[0] = parameters[1];
@@ -410,7 +427,10 @@ namespace Polymer_brush
 			if (f * fmid > 0)
 			{
 				Console.WriteLine("Bisection error");
-				throw new Exception();
+                logWriter.Close();
+                sw.Close();
+               // newthonWriter.Close();
+                throw new Exception();
 				return 0;
 			}
 			if (f < 0)
@@ -436,7 +456,10 @@ namespace Polymer_brush
 					return output;
 			}
 			Console.WriteLine("Too many iterations");
-			throw new Exception();
+            logWriter.Close();
+            sw.Close();
+            //newthonWriter.Close();
+            throw new Exception();
 		}
 		static void FindVolumeFractionsInTheBrushForPoint(out double[] XBrush, double y_cur, double[] initialGuess = null)
         {
@@ -468,7 +491,8 @@ namespace Polymer_brush
             {
 				XBrush[i] = XBrushReduced[i - 1];
 				volumeFractionsSum += XBrush[i];
-			}
+                XInBrushForPreviousPoint[i - 1] = XBrushReduced[i - 1];
+            }
 			XBrush[0] = 1- volumeFractionsSum;
 			double[] XInside;
 			//TryingToFindStepInTheBrush(out XInside, y_cur, XBrush);
@@ -506,6 +530,9 @@ namespace Polymer_brush
 		delegate void NonlinearSystem(double[] X, out double[] F, int L);
 		static void DNEQNF(NonlinearSystem Func, double ERREL, int L, int ITMAX, double[] XGuess, out double[] X, out double FNORM)
 		{
+			newthonWriter = new StreamWriter(File.Create("newthonLog.txt"));
+			newthonWriter.WriteLine("Function: "+Func.Method.Name+";");
+			newthonWriter.WriteLine("Iteration; X[0];X[1];F[0];F[1];FNORM;J[00];J[01];J[10];J[11];");
 			int iterations = 0;
 			double[] F = new double[L];
 			X = new double[XGuess.Length];
@@ -534,11 +561,10 @@ namespace Polymer_brush
 						X[j] += dx;
 
 
-                        //for (double devisionStepDegree = 1; X[j]>=1; devisionStepDegree++)
-                        double XSum = 0;
+                        /*double XSum = 0;
 						for (int a = 0; a < L; a++)
 							XSum += X[a];
-;                       for (double devisionStepDegree = 1;XSum >= 1 && devisionStepDegree<20; devisionStepDegree++)
+;                       for (double devisionStepDegree = 1;XSum >= 1 && devisionStepDegree<10; devisionStepDegree++)
                         {
 							dx /= 2;
 							X[j] = dx + old_x;
@@ -546,12 +572,12 @@ namespace Polymer_brush
                             XSum = 0;
                             for (int a = 0; a < L; a++)
                                 XSum += X[a];
-                        }
-                        /*for (double devisionStepDegree = 1; X[j] >= 1; devisionStepDegree++)
+                        }*/
+                        for (double devisionStepDegree = 1; X[j] >= 1; devisionStepDegree++)
                         {
                             dx /= 2;
                             X[j] = dx + old_x;
-                        }*/
+                        }
 
                         Func(X, out F, L);
 						double f_df = F[i];
@@ -559,7 +585,11 @@ namespace Polymer_brush
 						X[j] = old_x;
 						Func(X, out F, L);
 					}
-				double det = Matrix.determinantGauss(L, J, 0, false);
+                for (int i = 0; i < L; i++)
+                    FNORM += F[i] * F[i];
+				newthonWriter.WriteLine(iterations + ";" + X[0] + ";" + X[1] + ";" + F[0] + ";" + F[1] + ";" + FNORM + ";" + J[0, 0] + ";" + J[0, 1] + ";" + J[1, 0] + ";" + J[1, 1] + ";");
+
+                double det = Matrix.determinantGauss(L, J, 0, false);
 				double[,] reverse = Matrix.reverseMatrix(L, J);
 				double[] rightParts = new double[L];
 				for(int i = 0; i < L; i++)
@@ -599,10 +629,13 @@ namespace Polymer_brush
 				iterations++;
                 if (iterations > ITMAX)
                 {
-					throw new Exception(" Newton method did not manage to find solution for system of equations");
+                    logWriter.Close();
+                    sw.Close();
+                    newthonWriter.Close();
+                    throw new Exception(" Newton method did not manage to find solution for system of equations");
                 }
 			}
-			
+			newthonWriter.Close();
         }
 		static bool ContainsOutrangeValues(double[] X)
         {
