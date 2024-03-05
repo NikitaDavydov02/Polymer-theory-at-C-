@@ -57,7 +57,7 @@ namespace Polymer_brush
 				foreach (KeyValuePair<double, List<double>> pair in mixingEnergy)
 					sw.WriteLine(pair.Key + "  ;  " + pair.Value[0] + ";"+ pair.Value[1] + ";");
 			}
-            segregationPoints = FindSegregationPointsBetweenSolventAndPolymer();
+            //segregationPoints = FindSegregationPointsBetweenSolventAndPolymer();
 			segregationPoints = new double[2];
 			segregationPoints[0] = 0.42;
             segregationPoints[1] = 0.95;
@@ -535,10 +535,10 @@ namespace Polymer_brush
 
 
                         //for (double devisionStepDegree = 1; X[j]>=1; devisionStepDegree++)
-                        /*double XSum = 0;
+                        double XSum = 0;
 						for (int a = 0; a < L; a++)
 							XSum += X[a];
-;                       for (double devisionStepDegree = 1;XSum >= 1; devisionStepDegree++)
+;                       for (double devisionStepDegree = 1;XSum >= 1 && devisionStepDegree<20; devisionStepDegree++)
                         {
 							dx /= 2;
 							X[j] = dx + old_x;
@@ -546,12 +546,12 @@ namespace Polymer_brush
                             XSum = 0;
                             for (int a = 0; a < L; a++)
                                 XSum += X[a];
-                        }*/
-                        for (double devisionStepDegree = 1; X[j] >= 1; devisionStepDegree++)
+                        }
+                        /*for (double devisionStepDegree = 1; X[j] >= 1; devisionStepDegree++)
                         {
                             dx /= 2;
                             X[j] = dx + old_x;
-                        }
+                        }*/
 
                         Func(X, out F, L);
 						double f_df = F[i];
