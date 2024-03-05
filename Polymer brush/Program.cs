@@ -27,6 +27,7 @@ namespace Polymer_brush
 		static double[] Xbrush, fipolimer;
 		static double point_y;
 		static StreamWriter sw;
+		static StreamWriter logWriter;
 		static double z = 6;
 		//static double[] chemPotInTheBulk;
 		static double[] chemPotAtTheBorder;
@@ -50,12 +51,16 @@ namespace Polymer_brush
 			double u_bio=0;
 			Enter();
 			List<KeyValuePair<double, List<double>>> mixingEnergy = CalculateMixingEnergyProfile(2, 0, 20);
+			logWriter = new StreamWriter("log.txt");
 			using(StreamWriter sw = new StreamWriter("mixingFenergyOfSolventAndPolymer.txt"))
 			{
 				foreach (KeyValuePair<double, List<double>> pair in mixingEnergy)
 					sw.WriteLine(pair.Key + "  ;  " + pair.Value[0] + ";"+ pair.Value[1] + ";");
 			}
             segregationPoints = FindSegregationPointsBetweenSolventAndPolymer();
+			segregationPoints = new double[2];
+			segregationPoints[0] = 0.42;
+            segregationPoints[1] = 0.95;
             //return;
             sw = new StreamWriter("profile.txt");
             sw.WriteLine("y_cur    solvent    bio    polymer    osm_pressure");
@@ -64,7 +69,7 @@ namespace Polymer_brush
 			y_cur = y_min;
 
 			//!Calculate polymer concentration at the start position(A / B boundary)
-			P_AB = NormalizationSubintegralValue(y_cur, new List<double>() { y_edge });
+			//P_AB = NormalizationSubintegralValue(y_cur, new List<double>() { y_edge });
 			//P_AB = FindSubintegralValueForNormalization(y_cur, y_edge); // !   Polymer concentration at A/ B boundary(highest)  must work before finding profile to set Lagr multipliers in common block
            
 			
@@ -100,8 +105,8 @@ namespace Polymer_brush
 
 			Console.WriteLine("Beta: " + y_edge);
 			Console.WriteLine("Calculation is done!");
-			
 
+			logWriter.Close();
 			sw.Close();
 			Console.ReadLine();
 		}
@@ -123,7 +128,9 @@ namespace Polymer_brush
 
 			//y_min = 1.0 + 0.1 * aA / R;
 			y_min = 1.0 + aA / R;
-			y_max = 1.00001 * (1.0 + 1.0 * aA * rNA / R);                 //y_max = 1.0d0 * (1.0d0 + 2.0 * aA * rNA / R)
+			//y_min = 1.4;
+
+            y_max = 1.00001 * (1.0 + 1.0 * aA * rNA / R);                 //y_max = 1.0d0 * (1.0d0 + 2.0 * aA * rNA / R)
 			yacc = Math.Pow(10, -8);
 
 			//! areaPerChain min for all morphologies:
@@ -157,13 +164,13 @@ namespace Polymer_brush
 
 
 			//Solvent with other
-			chi[0, 1] = -1;//! solv - bio
+			chi[0, 1] = 1;//! solv - bio
 			chi[0, 2] =0.5;//! solv - polym first group
 			chi[0, 3] = 0.5;//! solv - polym second group
 
 			//Bio with other
-			chi[1, 2] = -1; //bio- polym first group
-			chi[1, 3] = -1;  //bio- polym second group
+			chi[1, 2] = 1; //bio- polym first group
+			chi[1, 3] = 1;  //bio- polym second group
 
 			//Polymer A with other
 			chi[2, 3] = 0;
@@ -184,8 +191,8 @@ namespace Polymer_brush
 			volumeFractionsInTheBulk = new double[NumberOfComponents];
 			for(int i=0;i<NumberOfComponents;i++)
 				volumeFractionsInTheBulk[i] = 0.0;
-			volumeFractionsInTheBulk[0] = 0.980;
-			volumeFractionsInTheBulk[1] = 1.0 - volumeFractionsInTheBulk[0];
+			volumeFractionsInTheBulk[0] = 1.0;//solvent
+			volumeFractionsInTheBulk[1] = 1.0 - volumeFractionsInTheBulk[0];//bio
 
 			chemPotInTheBulk = new double[NumberOfComponents];
 			chemPotAtTheBorder = new double[NumberOfComponents];
@@ -296,6 +303,8 @@ namespace Polymer_brush
 			chemPotAtTheBorder[NumberOfComponents-1] += BA * (R * (integrationMax - 1)) * (R * (integrationMax - 1));
 			Lamb_Pol = chemPotAtTheBorder[NumberOfComponents-1];
 
+			logWriter.WriteLine();
+			logWriter.WriteLine("Normalization function at y=" + y);
 			CalculateIntegral(integrationMin, integrationMax,NormalizationSubintegralValue,new List<double>() { y }, out s);
 			return s -norm;
 
@@ -306,16 +315,22 @@ namespace Polymer_brush
 			int JMAX = 10;
 			double old_s = -1 * Math.Pow(10, -30);
 			s = 0;
-			for(int n = 0; n < JMAX;n++)
+			logWriter.WriteLine("n;s");
+
+            for (int n = 1; n < JMAX;n++)
             {
 				s = CalculateIntegralWithDefeniteNumberOfTrapezoids(integrationMin, integrationMax, s, n, func, parameters);
-				//s = CalculateNormalizationIntegralWithDefeniteNumberOfTrapezoids(integrationMin, integrationMax, s, n+1);
-				
+                //s = CalculateNormalizationIntegralWithDefeniteNumberOfTrapezoids(integrationMin, integrationMax, s, n+1);
+                logWriter.WriteLine(n + " ; " + s + ";");
                 if (n > 4)
 					if (Math.Abs(s - old_s) < EPS * Math.Abs(old_s) || (s == 0 && old_s == 0))
-						return;
+					{
+                        logWriter.WriteLine("---");
+                        return;
+                    }
 				old_s = s;
             }
+			logWriter.Close();
 			Console.WriteLine("Too many steps in q trap");
 			throw new Exception();
 
@@ -323,26 +338,44 @@ namespace Polymer_brush
 		}
 		static double CalculateIntegralWithDefeniteNumberOfTrapezoids(double integrationMin,double integrationMax,double s, int n, Func<double,List<double>,double> func, List<double>parameters)
         {
+			string indent = "    ";
+			logWriter.WriteLine(indent + "Integrate n=" + n);
 			//s = 0;
 			if (n == 1)
-				s = 0.5 * (integrationMax - integrationMin) * (func(integrationMin, parameters) + func(integrationMax, parameters));
+			{
+                s = 0.5 * (integrationMax - integrationMin) * (func(integrationMin, parameters) + func(integrationMax, parameters));
+				logWriter.WriteLine(indent + s);
+            }
             else
             {
-				int it = (int)Math.Pow(2, n - 2);
-				double tnm = it;
-				double del = (integrationMax - integrationMin) / tnm;
-				double x = integrationMin + 0.5 * del;
+				int numberOfSegments = (int)Math.Pow(2, n - 2);
+				//double tnm = numberOfSegments;
+				double delta = (integrationMax - integrationMin) / numberOfSegments;
+				double x = integrationMin + 0.5 * delta;
 				double sum = 0;
-				for(int counter = 0; counter < it; counter++)
+				double lastGoodAdd = 0;
+				for(int counter = 0; counter < numberOfSegments; counter++)
                 {
 					//double add = FindSubintegralValueForNormalization(x, integrationMax);
 					double add = func(x,parameters);
+					logWriter.WriteLine(indent + indent + add);
+					///////////COMMENT THIS/////////////
 					if (double.IsNaN(add))
-						;
+					{
+                        add = lastGoodAdd;
+                    }
+					else
+						lastGoodAdd = add;
+					//////////////////////////////
 					sum += add;
-					x += del;
+					x += delta;
                 }
-				s = 0.5 * (s + (integrationMax - integrationMin) * sum / tnm);
+				double newS = (integrationMax - integrationMin) * sum / numberOfSegments;
+				if (double.IsNaN(s))
+					s = newS;
+				else
+					s = 0.5 * (s + newS);
+
 			}
 			return s;
 		}
@@ -350,8 +383,16 @@ namespace Polymer_brush
 		static double NormalizationSubintegralValue(double x, List<double> parameters)
         {
 			//Lamb_Pol = chemPotInTheBulk[2] + BA * (R * (  - 1)) * (R * (  - 1));
-			FindVolumeFractionsInTheBrushForPoint(out Xbrush, x);
-			double fay = Xbrush[NumberOfComponents-1];
+			if (parameters.Count > 1)
+			{
+                double[] initialGuess = new double[2];
+                initialGuess[0] = parameters[1];
+                initialGuess[1] = parameters[2];
+                FindVolumeFractionsInTheBrushForPoint(out Xbrush, x, initialGuess);
+            }
+            else
+				FindVolumeFractionsInTheBrushForPoint(out Xbrush, x);
+			double fay = Xbrush[NumberOfComponents-1];//polymer volume fraction
 			return fay * x * x;
 
 		}
@@ -397,7 +438,7 @@ namespace Polymer_brush
 			Console.WriteLine("Too many iterations");
 			throw new Exception();
 		}
-		static void FindVolumeFractionsInTheBrushForPoint(out double[] XBrush, double y_cur)
+		static void FindVolumeFractionsInTheBrushForPoint(out double[] XBrush, double y_cur, double[] initialGuess = null)
         {
 			
 			//!Solving(localy) system of non - linear equations
@@ -408,8 +449,16 @@ namespace Polymer_brush
 			double[] XBrushGUESS = new double[NumberOfComponents-1];
 			double[] XBrushReduced = new double[NumberOfComponents-1];
 			XBrush = new double[NumberOfComponents];
-			XBrushGUESS[0] = Math.Pow(10, -8);//this is the fraction of biocomponent in the brush
-			XBrushGUESS[1]=0.97;//this is the fraction of polymer in the brush
+			if (initialGuess == null)
+			{
+                XBrushGUESS[0] = Math.Pow(10, -8);//this is the fraction of biocomponent in the brush
+                XBrushGUESS[1] = 0.97;//this is the fraction of polymer in the brush
+            }
+			else
+			{
+                XBrushGUESS[0] = initialGuess[0];//this is the fraction of biocomponent in the brush
+                XBrushGUESS[1] = initialGuess[1];//this is the fraction of polymer in the brush
+            }
 			double FNORM;
 			
 			DNEQNF(BrushEquations, ERREL, NumberOfComponents - 1, ITMAX, XBrushGUESS, out XBrushReduced, out FNORM);
@@ -476,21 +525,35 @@ namespace Polymer_brush
 				for(int i=0;i<L;i++)
 					for(int j=0;j< X.Length; j++)
                     {
-						Func(X, out F, L);
+                        if (y_cur == 1.706459054209919 && iterations == 22)
+                            ;
+                        Func(X, out F, L);
 						double f_init = F[i];
 						double old_x = X[j];
 						double dx = old_x * 0.01;
 						X[j] += dx;
 
 
-						for (double devisionStepDegree = 1; X[j]>=1; devisionStepDegree++)
+                        //for (double devisionStepDegree = 1; X[j]>=1; devisionStepDegree++)
+                        /*double XSum = 0;
+						for (int a = 0; a < L; a++)
+							XSum += X[a];
+;                       for (double devisionStepDegree = 1;XSum >= 1; devisionStepDegree++)
                         {
 							dx /= 2;
 							X[j] = dx + old_x;
-						}
 
+                            XSum = 0;
+                            for (int a = 0; a < L; a++)
+                                XSum += X[a];
+                        }*/
+                        for (double devisionStepDegree = 1; X[j] >= 1; devisionStepDegree++)
+                        {
+                            dx /= 2;
+                            X[j] = dx + old_x;
+                        }
 
-						Func(X, out F, L);
+                        Func(X, out F, L);
 						double f_df = F[i];
 						J[i, j] = (f_df - f_init) / dx;
 						X[j] = old_x;
@@ -512,7 +575,7 @@ namespace Polymer_brush
 
 				for(int i=0;i<X.Length;i++)
 					deltaX[i] = X[i] - oldX[i];
-
+				
 				if (double.IsNaN(X[0]))
 					;
 
@@ -624,7 +687,7 @@ namespace Polymer_brush
 			F[NumberOfComponents-2] = Math.Pow((mixingPartOfExchangeChemicalPotentials[NumberOfComponents-1] + BA * (R * (y_cur - 1.0)) * (R * (y_cur - 1.0)) - Lamb_Pol),2);//!polymer error
 
 			Console.WriteLine("BrushEquations values: " + F[0] + "  " +F[1] + " ----------------Volume fractions:   " + X[0] + "    " + X[1]);
-
+			
 		}
 		static double CalculateOsmoticPressure(double[] _volumeFractions)
 		{
@@ -670,8 +733,8 @@ namespace Polymer_brush
 			XGUESS[0] = 0.000001;
 			XGUESS[1] = 0.999999;
 
-            XGUESS[0] = 0.02;
-            XGUESS[1] = 0.85;
+            //XGUESS[0] = 0.02;
+            //XGUESS[1] = 0.99;
             double FNORM;
             DNEQNF(SegregationEquations, ERREL, 2, ITMAX, XGUESS, out X, out FNORM);
 			return X;
