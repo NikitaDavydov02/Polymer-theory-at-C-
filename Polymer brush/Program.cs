@@ -303,7 +303,7 @@ namespace Polymer_brush
 		static void CalculateIntegral(double integrationMin, double integrationMax, Func<double,List<double>,double> func,List<double> parameters, out double s)
         {
 			double EPS = 0.1;
-			int JMAX = 10;
+			int JMAX = 15;
 			double old_s = -1 * Math.Pow(10, -30);
 			s = 0;
 			for(int n = 0; n < JMAX;n++)
