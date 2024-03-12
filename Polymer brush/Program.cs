@@ -663,7 +663,56 @@ namespace Polymer_brush
         }
 		static double[] FindSegregationPointsBetweenSolventAndPolymer()
 		{
-            double ERREL = Math.Pow(10, -6);
+			double[] initialComposition = new double[3];
+			
+			initialComposition[2] = 0.7; //polymer
+			initialComposition[1] = 0;//bio
+            initialComposition[0] = 1 - initialComposition[2]; //solvent
+			double Finit = mixingPartModule.CalculateMixingFreeEnergy(initialComposition);
+
+            double x1 = initialComposition[2];//polymer molar fraction
+			double x2 = initialComposition[2];
+			double dx = 0.01;
+
+			double[] X = new double[3];
+			for (int i = 0; i < 3; i++)
+				X[i] = 0;
+
+			double bestFmix = 10000000;
+			double[] best_x = new double[2];
+
+			while (x1 > 0)
+			{
+				x2 = initialComposition[2] + dx;
+
+                double[] leftComposition = new double[3];
+				leftComposition[0] = 1 - x1;
+				leftComposition[1] = 0;
+				leftComposition[2] = x1;
+				double leftF = mixingPartModule.CalculateMixingFreeEnergy(leftComposition);
+
+                while (x2 < 1)
+				{
+                    double[] rightComposition = new double[3];
+                    rightComposition[0] = 1 - x2;
+                    rightComposition[1] = 0;
+                    rightComposition[2] = x2;
+                    double rightF = mixingPartModule.CalculateMixingFreeEnergy(rightComposition);
+					double Fsep = leftF + (initialComposition[2] - x1) * (rightF-leftF) / (x2 - x1);
+					double delta = Fsep - Finit;
+					if (delta < bestFmix)
+					{
+						bestFmix = delta;
+						best_x[0] = x1;
+						best_x[1] = x2;
+					}
+					x2 += dx;
+                }
+				x1 -= dx;
+			}
+			return best_x;
+
+            /*double ERREL = Math.Pow(10, -6);
             int ITMAX = 600;
             double[] XGUESS = new double[2];
             double[] X = new double[2];
@@ -674,7 +723,7 @@ namespace Polymer_brush
             XGUESS[1] = 0.85;
             double FNORM;
             DNEQNF(SegregationEquations, ERREL, 2, ITMAX, XGUESS, out X, out FNORM);
-			return X;
+			return X;*/
         }
         static void SegregationEquations(double[] X, out double[] F, int L)
         {
