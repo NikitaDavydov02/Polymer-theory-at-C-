@@ -32,10 +32,16 @@ namespace Polymer_brush
 			X[componentIndex] = x;
 			return (f_df - f) / dx;
 		}*/
+		public double[] segregationPoints;
+		public double[] segregationMixingEnergies;
+		public MixingPartModule()
+		{
+			FindSegregationPointsBetweenSolventAndPolymer();
+		}
 		public double CalculateMixingFreeEnergy(double[] X)
         {
 			return CalculateFloryMixingFreeEnergy(X);
-			//return CalculateGugenheimMixingFreeEnergy(X);
+			return CalculateGugenheimMixingFreeEnergy(X);
 		}
 		private double[] CalculateFunctionalGroupsMolarFractions(double[] XofMolecules)
         {
@@ -90,7 +96,7 @@ namespace Polymer_brush
 			double output = translationSum + mixingSum;
 			return output;
 		}
-		private double CalculateExchangeChemialPotentialOfComponentAnaliticaly(double[] X, int componenIndex)
+		/*private double CalculateExchangeChemialPotentialOfComponentAnaliticaly(double[] X, int componenIndex)
 		{
 			if (componenIndex == 0 || componenIndex == 1)
 				return 0;
@@ -101,7 +107,7 @@ namespace Polymer_brush
 			output -= Program.chi[0, 2] * X[2];
 			return output;
         }
-
+		*/
         public double CalculateExchangeChemialPotentialOfComponent(double[] X, int componenIndex)
 		{
 			
@@ -135,7 +141,7 @@ namespace Polymer_brush
 
 
 		}
-		public double[] CalculateGugenheimCorrelations(double[] alphas, double[,] etas)
+		private double[] CalculateGugenheimCorrelations(double[] alphas, double[,] etas)
 		{
 			int n = alphas.Length;
 			double[] XX = new double[n];
@@ -169,5 +175,68 @@ namespace Polymer_brush
 			return XX;
 
 		}
-	}
+        private void FindSegregationPointsBetweenSolventAndPolymer()
+        {
+            double[] initialComposition = new double[3];
+
+            initialComposition[2] = 0.7; //polymer
+            initialComposition[1] = 0;//bio
+            initialComposition[0] = 1 - initialComposition[2]; //solvent
+            double Finit = CalculateMixingFreeEnergy(initialComposition);
+
+            double x1 = initialComposition[2];//polymer molar fraction
+            double x2 = initialComposition[2];
+            double dx = 0.01;
+
+            double[] X = new double[3];
+            for (int i = 0; i < 3; i++)
+                X[i] = 0;
+
+            double bestFmix = 10000000;
+            double[] best_x = new double[2];
+            double[] best_Fedge = new double[2];
+
+            while (x1 > 0)
+            {
+                x2 = initialComposition[2] + dx;
+
+                double[] leftComposition = new double[3];
+                leftComposition[0] = 1 - x1;
+                leftComposition[1] = 0;
+                leftComposition[2] = x1;
+                double leftF = CalculateMixingFreeEnergy(leftComposition);
+
+                while (x2 < 1)
+                {
+                    double[] rightComposition = new double[3];
+                    rightComposition[0] = 1 - x2;
+                    rightComposition[1] = 0;
+                    rightComposition[2] = x2;
+                    double rightF = CalculateMixingFreeEnergy(rightComposition);
+                    double Fsep = leftF + (initialComposition[2] - x1) * (rightF - leftF) / (x2 - x1);
+                    double delta = Fsep - Finit;
+                    if (delta < bestFmix)
+                    {
+                        bestFmix = delta;
+                        best_x[0] = x1;
+                        best_x[1] = x2;
+						best_Fedge[0] = leftF;
+						best_Fedge[1] = rightF;
+                    }
+                    x2 += dx;
+                }
+                x1 -= dx;
+            }
+			//return best_x;
+			segregationPoints = new double[2];
+			segregationMixingEnergies = new double[2];
+
+            for (int i = 0; i < 2; i++)
+			{
+                segregationPoints[i] = best_x[i];
+				segregationMixingEnergies[i] = best_Fedge[i];
+            }
+
+        }
+    }
 }
