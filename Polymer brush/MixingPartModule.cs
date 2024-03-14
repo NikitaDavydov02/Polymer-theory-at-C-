@@ -40,9 +40,15 @@ namespace Polymer_brush
 		}
 		public double CalculateMixingFreeEnergy(double[] X)
         {
-			return CalculateFloryMixingFreeEnergy(X);
-			return CalculateGugenheimMixingFreeEnergy(X);
-		}
+			/*if (segregationPoints != null && (X[2] >= segregationPoints[0] && X[2] < segregationPoints[1]))
+			{
+				double output = segregationMixingEnergies[0] + (X[2] - segregationPoints[0]) * (segregationMixingEnergies[1] - segregationMixingEnergies[0]) / (segregationPoints[1] - segregationPoints[0]);
+				return output;
+			}*/
+            return CalculateFloryMixingFreeEnergy(X);
+            return CalculateGugenheimMixingFreeEnergy(X);
+
+        }
 		private double[] CalculateFunctionalGroupsMolarFractions(double[] XofMolecules)
         {
 			double[] functionalGroupsVolumeFraction = new double[Program.chiMatrixSize];
@@ -68,7 +74,7 @@ namespace Polymer_brush
 					if(j>i && X[i] != 0	&& X[j] != 0)
 					{
 						if(i==0&&j==2)
-                            a += (Program.chi[i, j] + 1.5 * X[2] * X[2]) * X[i] * X[j];
+                            a += (Program.chi[i, j] + 2.0 * X[2] * X[2]) * X[i] * X[j];
 						else
 							a += Program.chi[i, j] * X[i] * X[j];
                     }
@@ -186,7 +192,7 @@ namespace Polymer_brush
 
             double x1 = initialComposition[2];//polymer molar fraction
             double x2 = initialComposition[2];
-            double dx = 0.01;
+            double dx = 0.0001;
 
             double[] X = new double[3];
             for (int i = 0; i < 3; i++)

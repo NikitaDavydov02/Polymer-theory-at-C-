@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.IO;
 using System.Runtime.Remoting.Messaging;
+using System.Reflection;
 
 namespace Polymer_brush
 {
@@ -27,6 +28,8 @@ namespace Polymer_brush
         static double[] Xbrush, fipolimer;
         static double point_y;
         static StreamWriter sw;
+        static StreamWriter newthonWriter;
+        static StreamWriter integralLogWriter;
         static double z = 6;
         //static double[] chemPotInTheBulk;
         static double[] chemPotAtTheBorder;
@@ -60,13 +63,15 @@ namespace Polymer_brush
             //segregationPoints = FindSegregationPointsBetweenSolventAndPolymer();
             //return;
             sw = new StreamWriter("profile.txt");
+            integralLogWriter = new StreamWriter("integral_log_writer.txt");
             sw.WriteLine("y_cur    solvent    bio    polymer    osm_pressure");
 
             y_edge = BisectionSolve(y_min, y_max, yacc, NormalizationFunction, new List<double>());
             y_cur = y_min;
+            integralLogWriter.Close();
 
-            //!Calculate polymer concentration at the start position(A / B boundary)
-            P_AB = NormalizationSubintegralValue(y_cur, new List<double>() { y_edge });
+           //!Calculate polymer concentration at the start position(A / B boundary)
+           P_AB = NormalizationSubintegralValue(y_cur, new List<double>() { y_edge });
             //P_AB = FindSubintegralValueForNormalization(y_cur, y_edge); // !   Polymer concentration at A/ B boundary(highest)  must work before finding profile to set Lagr multipliers in common block
 
 
@@ -186,7 +191,7 @@ namespace Polymer_brush
             volumeFractionsInTheBulk = new double[NumberOfComponents];
             for (int i = 0; i < NumberOfComponents; i++)
                 volumeFractionsInTheBulk[i] = 0.0;
-            volumeFractionsInTheBulk[0] = 0.980;
+            volumeFractionsInTheBulk[0] = 1.0-0.0000001;
             volumeFractionsInTheBulk[1] = 1.0 - volumeFractionsInTheBulk[0];
 
             chemPotInTheBulk = new double[NumberOfComponents];
@@ -275,7 +280,7 @@ namespace Polymer_brush
             //chemPotAtTheBorder[0] = chemPotInTheBulk[0];//solvent
             //chemPotAtTheBorder[1] = chemPotInTheBulk[1];//bio
             //Finding volume fractions at the border
-            double ERREL = Math.Pow(10, -4);
+            double ERREL = Math.Pow(10, -2);
             double[] XBorderGUESS = new double[NumberOfComponents - 1];
             for (int i = 0; i < NumberOfComponents - 1; i++)
                 XBorderGUESS[i] = volumeFractionsInTheBulk[i];//this is the fraction of solvent at the border
@@ -310,6 +315,7 @@ namespace Polymer_brush
             int JMAX = 15;
             double old_s = -1 * Math.Pow(10, -30);
             s = 0;
+            integralLogWriter.WriteLine("Calculate integral for y_max=" + integrationMax);
             for (int n = 0; n < JMAX; n++)
             {
                 s = CalculateIntegralWithDefeniteNumberOfTrapezoids(integrationMin, integrationMax, s, n, func, parameters);
@@ -321,15 +327,22 @@ namespace Polymer_brush
                 old_s = s;
             }
             Console.WriteLine("Too many steps in q trap");
+            integralLogWriter.Close();
+
             throw new Exception();
 
 
         }
         static double CalculateIntegralWithDefeniteNumberOfTrapezoids(double integrationMin, double integrationMax, double s, int n, Func<double, List<double>, double> func, List<double> parameters)
         {
+            integralLogWriter.WriteLine("    Sum Trapezoinds " + n);
             //s = 0;
             if (n == 1)
-                s = 0.5 * (integrationMax - integrationMin) * (func(integrationMin, parameters) + func(integrationMax, parameters));
+            {
+                double f_min = func(integrationMin, parameters);
+                double f_max = func(integrationMax, parameters);
+                s = 0.5 * (integrationMax - integrationMin) * (f_min+f_max);
+            }
             else
             {
                 int it = (int)Math.Pow(2, n - 2);
@@ -337,16 +350,21 @@ namespace Polymer_brush
                 double del = (integrationMax - integrationMin) / tnm;
                 double x = integrationMin + 0.5 * del;
                 double sum = 0;
+                integralLogWriter.WriteLine("        " + "Iter" + " ; " + "x" + " ; " + "add" + "; " + "sum");
                 for (int counter = 0; counter < it; counter++)
                 {
                     //double add = FindSubintegralValueForNormalization(x, integrationMax);
+                    
                     double add = func(x, parameters);
                     if (double.IsNaN(add))
                         ;
                     sum += add;
                     x += del;
+                    integralLogWriter.WriteLine("        " + counter + " ; " + x + " ; " + add + "; " + sum);
+
                 }
                 s = 0.5 * (s + (integrationMax - integrationMin) * sum / tnm);
+                integralLogWriter.WriteLine("        "+s);
             }
             return s;
         }
@@ -373,6 +391,7 @@ namespace Polymer_brush
             if (f * fmid > 0)
             {
                 Console.WriteLine("Bisection error");
+                integralLogWriter.Close();
                 throw new Exception();
                 return 0;
             }
@@ -399,14 +418,14 @@ namespace Polymer_brush
                     return output;
             }
             Console.WriteLine("Too many iterations");
+            integralLogWriter.Close();
             throw new Exception();
         }
         static void FindVolumeFractionsInTheBrushForPoint(out double[] XBrush, double y_cur)
         {
-
             //!Solving(localy) system of non - linear equations
 
-            double ERREL = Math.Pow(10, -4);
+            double ERREL = Math.Pow(10, -2);
             point_y = y_cur;
             int ITMAX = 600;
             double[] XBrushGUESS = new double[NumberOfComponents - 1];
@@ -414,6 +433,9 @@ namespace Polymer_brush
             XBrush = new double[NumberOfComponents];
             XBrushGUESS[0] = Math.Pow(10, -8);//this is the fraction of biocomponent in the brush
             XBrushGUESS[1] = 0.97;//this is the fraction of polymer in the brush
+
+            //XBrushGUESS[0] = 9*Math.Pow(10, -8);//this is the fraction of biocomponent in the brush
+            //XBrushGUESS[1] = 0;//this is the fraction of polymer in the brush
             double FNORM;
 
             DNEQNF(BrushEquations, ERREL, NumberOfComponents - 1, ITMAX, XBrushGUESS, out XBrushReduced, out FNORM);
@@ -461,6 +483,10 @@ namespace Polymer_brush
         delegate void NonlinearSystem(double[] X, out double[] F, int L);
         static void DNEQNF(NonlinearSystem Func, double ERREL, int L, int ITMAX, double[] XGuess, out double[] X, out double FNORM)
         {
+            if (y_cur == 2.7661752970011535)
+                ;
+            newthonWriter = new StreamWriter(File.Create("newthon_log.txt"));
+            newthonWriter.WriteLine("Iteration; X0; X1; F0; F1; FNORM; J00; J01; J10; J11;");
             int iterations = 0;
             double[] F = new double[L];
             X = new double[XGuess.Length];
@@ -476,6 +502,8 @@ namespace Polymer_brush
             double[,] J = new double[L, XGuess.Length];
             while (FNORM >= ERREL)
             {
+                if (FNORM == 0.54307704933749079)
+                    ;
                 //Calculate Jacobian
                 for (int i = 0; i < L; i++)
                     for (int j = 0; j < X.Length; j++)
@@ -501,6 +529,11 @@ namespace Polymer_brush
                         Func(X, out F, L);
                     }
                 double det = Matrix.determinantGauss(L, J, 0, false);
+                if (det == 0)
+                {
+                    newthonWriter.Close();
+                    ;
+                }
                 double[,] reverse = Matrix.reverseMatrix(L, J);
                 double[] rightParts = new double[L];
                 for (int i = 0; i < L; i++)
@@ -534,16 +567,21 @@ namespace Polymer_brush
                     ;
                 if (double.IsNaN(X[0]))
                     ;
+
+
+                newthonWriter.WriteLine(iterations + ";" + X[0] + ";" + X[1] + ";" + F[0]+ ";" +F[1]+ ";" + FNORM +";" + J[0,0]+ ";" + J[0,1]+ ";" + J[1,0]+ ";" + J[1,1] + ";");
                 FNORM = 0;
                 for (int i = 0; i < L; i++)
                     FNORM += F[i] * F[i];
                 iterations++;
                 if (iterations > ITMAX)
                 {
+                    newthonWriter.Close();
+                    integralLogWriter.Close();
                     throw new Exception(" Newton method did not manage to find solution for system of equations");
                 }
             }
-
+            newthonWriter.Close();
         }
         static bool ContainsOutrangeValues(double[] X)
         {
@@ -605,7 +643,8 @@ namespace Polymer_brush
         {
             double nu = 2;
             double y_cur = point_y;
-
+            if (y_cur == 2.7661752970011535)
+                ;
 
             double volumeFractionSum = 0;
             for (int i = 0; i < NumberOfComponents - 1; i++)
@@ -623,7 +662,7 @@ namespace Polymer_brush
             for (int i = 0; i < NumberOfComponents - 2; i++)
             {
                 F[i] = (mixingPartOfExchangeChemicalPotentials[i + 1] - chemPotInTheBulk[i + 1]) * (mixingPartOfExchangeChemicalPotentials[i + 1] - chemPotInTheBulk[i + 1]);// !bio contaminant error
-
+               // F[i] = X[i + 1]* X[i + 1];
             }
             F[NumberOfComponents - 2] = Math.Pow((mixingPartOfExchangeChemicalPotentials[NumberOfComponents - 1] + BA * (R * (y_cur - 1.0)) * (R * (y_cur - 1.0)) - Lamb_Pol), 2);//!polymer error
 
@@ -644,6 +683,7 @@ namespace Polymer_brush
         {
             List<KeyValuePair<double, List<double>>> output = new List<KeyValuePair<double, List<double>>>();
             double step = 0.99 / (numberOfPoints - 1);
+            step = 0.0001;
             double[] volumeFractions = new double[NumberOfComponents];
             //double volumeFractionSum = 0;
             for (int i = 0; i < NumberOfComponents; i++)
