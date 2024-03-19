@@ -40,9 +40,9 @@ namespace Polymer_brush
 		}
 		public double CalculateMixingFreeEnergy(double[] X)
         {
-			if (segregationPoints != null && (X[2] >= segregationPoints[0] && X[2] < segregationPoints[1]))
+			if (segregationPoints != null && (X[1] >= segregationPoints[0] && X[1] < segregationPoints[1]))
 			{
-				double output = segregationMixingEnergies[0] + (X[2] - segregationPoints[0]) * (segregationMixingEnergies[1] - segregationMixingEnergies[0]) / (segregationPoints[1] - segregationPoints[0]);
+				double output = segregationMixingEnergies[0] + (X[1] - segregationPoints[0]) * (segregationMixingEnergies[1] - segregationMixingEnergies[0]) / (segregationPoints[1] - segregationPoints[0]);
 				//output += X[1] * Math.Log(X[1]) / Program.size[1];
                 //output += Program.chi[0, 1] * X[0] * X[1];
                 //output += Program.chi[0, 2] * X[2] * X[1];
@@ -55,10 +55,15 @@ namespace Polymer_brush
 		private double[] CalculateFunctionalGroupsMolarFractions(double[] XofMolecules)
         {
 			double[] functionalGroupsVolumeFraction = new double[Program.chiMatrixSize];
-			for (int i = 0; i < Program.NumberOfComponents - 1; i++)
-				functionalGroupsVolumeFraction[i] = XofMolecules[i];
-			for (int i = Program.NumberOfComponents - 1; i < Program.chiMatrixSize; i++)
-				functionalGroupsVolumeFraction[i] = XofMolecules[Program.NumberOfComponents - 1] * Program.fractionsOfGroups[i - (Program.NumberOfComponents - 1)];
+			functionalGroupsVolumeFraction[0]= XofMolecules[0];
+			
+			//Polymer groups
+            for (int i = 0; i < Program.NumberOfPolymerGroupTypes; i++)
+                functionalGroupsVolumeFraction[1+i] = XofMolecules[1] * Program.fractionsOfGroups[i];
+
+			//Additives in solution
+            for (int i = 2; i < Program.NumberOfComponents; i++)
+                functionalGroupsVolumeFraction[i-1+Program.NumberOfPolymerGroupTypes] = XofMolecules[i];
 			return functionalGroupsVolumeFraction;
 		}
 		private double CalculateFloryMixingFreeEnergy(double[] XofMolecules)
@@ -76,8 +81,8 @@ namespace Polymer_brush
 				for (int j = 0;j < Program.chiMatrixSize; j++)
 					if(j>i && X[i] != 0	&& X[j] != 0)
 					{
-						if(i==0&&j==2)
-                            a += (Program.chi[i, j] + 2.0 * X[2] * X[2]) * X[i] * X[j];
+						if(i==0&&j==1)
+                            a += (Program.chi[i, j] + 0.0 * X[2] * X[2]) * X[i] * X[j];
 						else
 							a += Program.chi[i, j] * X[i] * X[j];
                     }
@@ -89,8 +94,8 @@ namespace Polymer_brush
 			double[] X = CalculateFunctionalGroupsMolarFractions(XofMolecules);
 			int n = X.Length;
 			double translationSum = 0;
-			for (int i = 0; i < Program.NumberOfComponents - 1; i++)
-				if(X[i]!=0)
+			for (int i = 0; i < Program.NumberOfComponents; i++)
+				if(X[i]!=0 && i!=1)
 					translationSum += XofMolecules[i] * Math.Log(XofMolecules[i]) / Program.size[i]; 
 			double[] XX = CalculateGugenheimCorrelations(X, Program.etas);
 			double mixingSum = 0;
@@ -186,20 +191,22 @@ namespace Polymer_brush
 		}
         private void FindSegregationPointsBetweenSolventAndPolymer()
         {
-            double[] initialComposition = new double[3];
+            double[] initialComposition = new double[Program.NumberOfComponents];
 
-            initialComposition[2] = 0.7; //polymer
-            initialComposition[1] = 0;//bio
-            initialComposition[0] = 1 - initialComposition[2]; //solvent
+            initialComposition[1] = 0.7; //polymer
+            initialComposition[0] = 1 - initialComposition[1];//solvent
+			for (int i = 2; i < Program.NumberOfComponents; i++)
+				initialComposition[i] = 0;
+
             double Finit = CalculateMixingFreeEnergy(initialComposition);
 
-            double x1 = initialComposition[2];//polymer molar fraction
-            double x2 = initialComposition[2];
+            double x1 = initialComposition[1];//polymer molar fraction
+            double x2 = initialComposition[1];
             double dx = 0.0001;
 
-            double[] X = new double[3];
-            for (int i = 0; i < 3; i++)
-                X[i] = 0;
+            /*double[] X = new double[Program.NumberOfComponents];
+            for (int i = 0; i < Program.NumberOfComponents; i++)
+                X[i] = 0;*/
 
             double bestFmix = 10000000;
             double[] best_x = new double[2];
@@ -207,22 +214,24 @@ namespace Polymer_brush
 
             while (x1 > 0)
             {
-                x2 = initialComposition[2] + dx;
+                x2 = initialComposition[1] + dx;
 
                 double[] leftComposition = new double[3];
                 leftComposition[0] = 1 - x1;
-                leftComposition[1] = 0;
-                leftComposition[2] = x1;
+                leftComposition[1] = x1;
+                for (int i = 2; i < Program.NumberOfComponents; i++)
+                    leftComposition[i] = 0;
                 double leftF = CalculateMixingFreeEnergy(leftComposition);
 
                 while (x2 < 1)
                 {
                     double[] rightComposition = new double[3];
                     rightComposition[0] = 1 - x2;
-                    rightComposition[1] = 0;
-                    rightComposition[2] = x2;
+                    rightComposition[1] = x2;
+                    for (int i = 2; i < Program.NumberOfComponents; i++)
+                        rightComposition[i] = 0;
                     double rightF = CalculateMixingFreeEnergy(rightComposition);
-                    double Fsep = leftF + (initialComposition[2] - x1) * (rightF - leftF) / (x2 - x1);
+                    double Fsep = leftF + (initialComposition[1] - x1) * (rightF - leftF) / (x2 - x1);
                     double delta = Fsep - Finit;
                     if (delta < bestFmix)
                     {
