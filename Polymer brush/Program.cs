@@ -36,7 +36,6 @@ namespace Polymer_brush
         static MixingPartModule mixingPartModule;
         static void Main(string[] args)
         {
-            
             /*double[] guess = new double[2];
 			double[] X;
 			double norm;
@@ -191,7 +190,7 @@ namespace Polymer_brush
             volumeFractionsInTheBulk = new double[NumberOfComponents];
             for (int i = 0; i < NumberOfComponents; i++)
                 volumeFractionsInTheBulk[i] = 0.0;
-            volumeFractionsInTheBulk[0] = 1.0-0.0000001;
+            volumeFractionsInTheBulk[0] = 1;
             volumeFractionsInTheBulk[1] = 1.0 - volumeFractionsInTheBulk[0];
 
             chemPotInTheBulk = new double[NumberOfComponents];
@@ -532,6 +531,7 @@ namespace Polymer_brush
                 if (det == 0)
                 {
                     newthonWriter.Close();
+                    throw new Exception();
                     ;
                 }
                 double[,] reverse = Matrix.reverseMatrix(L, J);

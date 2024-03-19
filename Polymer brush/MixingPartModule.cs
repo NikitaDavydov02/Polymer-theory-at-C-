@@ -40,11 +40,14 @@ namespace Polymer_brush
 		}
 		public double CalculateMixingFreeEnergy(double[] X)
         {
-			/*if (segregationPoints != null && (X[2] >= segregationPoints[0] && X[2] < segregationPoints[1]))
+			if (segregationPoints != null && (X[2] >= segregationPoints[0] && X[2] < segregationPoints[1]))
 			{
 				double output = segregationMixingEnergies[0] + (X[2] - segregationPoints[0]) * (segregationMixingEnergies[1] - segregationMixingEnergies[0]) / (segregationPoints[1] - segregationPoints[0]);
-				return output;
-			}*/
+				//output += X[1] * Math.Log(X[1]) / Program.size[1];
+                //output += Program.chi[0, 1] * X[0] * X[1];
+                //output += Program.chi[0, 2] * X[2] * X[1];
+                return output;
+			}
             return CalculateFloryMixingFreeEnergy(X);
             return CalculateGugenheimMixingFreeEnergy(X);
 
