@@ -43,6 +43,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Components\Component.cs" />
+    <Compile Include="Input.cs" />
     <Compile Include="Matrix.cs" />
     <Compile Include="MixingPartModule.cs" />
     <Compile Include="Program.cs" />

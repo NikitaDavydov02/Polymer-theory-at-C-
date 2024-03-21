@@ -137,8 +137,8 @@ namespace Polymer_brush
             //!areaPerChain_MAX = 3.0d0 * aA * *2 * (3.1415926 * 4.0 * rNB * *2 / 3.0d0) **(1.0 / 3.0)
             //				 !write(*, *) BA,R,rNB* aA, areaPerChain,10.0 * (nu + 1.1) * aA * *2,y_max,BA * (R * (y_max - 1.0)) * *2,
             //!stop
-            NumberOfComponents = 3;
-            NumberOfPolymerGroupTypes = 2;
+            NumberOfComponents = 2;
+            NumberOfPolymerGroupTypes = 1;
 
 
             size = new double[NumberOfComponents];
@@ -147,7 +147,7 @@ namespace Polymer_brush
 
             size[0] = 1.0;// ! solvent
             size[1] = rNA;// polymer
-            size[2] = 3.0;// bio
+            //size[2] = 3.0;// bio
             //size[2] = 60.0;
 
             chi = new double[NumberOfComponents + NumberOfPolymerGroupTypes - 1, NumberOfComponents + NumberOfPolymerGroupTypes - 1];
@@ -159,20 +159,19 @@ namespace Polymer_brush
             for (int i = 0; i < NumberOfPolymerGroupTypes; i++)
                 fractionsOfGroups[i] = 0.1;
             fractionsOfGroups[0] = 1;
-            fractionsOfGroups[1] = 0;
+            //fractionsOfGroups[1] = 0;
 
+            chi[0, 1] = -1;//solv-bio
 
-            //Solvent with other
+            /*//Solvent with other
             chi[0, 3] = -1;//! solv - bio
             chi[0, 1] = 0;//! solv - polym first group
             chi[0, 2] = 0;//! solv - polym second group
-
             //Bio with other
             chi[3, 1] = -1; //bio- polym first group
             chi[3, 2] = -1;  //bio- polym second group
-
             //Polymer A with other
-            chi[1, 2] = 0;
+            chi[1, 2] = 0;*/
 
             for (int i = 0; i < chiMatrixSize; i++)
             {
@@ -190,8 +189,8 @@ namespace Polymer_brush
             volumeFractionsInTheBulk = new double[NumberOfComponents];
             for (int i = 0; i < NumberOfComponents; i++)
                 volumeFractionsInTheBulk[i] = 0.0;
-            volumeFractionsInTheBulk[0] = 0.98;//solvent
-            volumeFractionsInTheBulk[2] = 1.0 - volumeFractionsInTheBulk[0];//bioadditive
+            volumeFractionsInTheBulk[0] = 1.00;//solvent
+            //volumeFractionsInTheBulk[2] = 1.0 - volumeFractionsInTheBulk[0];//bioadditive
 
             chemPotInTheBulk = new double[NumberOfComponents];
             chemPotAtTheBorder = new double[NumberOfComponents];
@@ -445,8 +444,10 @@ namespace Polymer_brush
             double[] XBrushGUESS = new double[NumberOfComponents - 1];//Everything except solvent
             double[] XBrushReduced = new double[NumberOfComponents - 1];//Everything except solvent
             XBrush = new double[NumberOfComponents];
-            XBrushGUESS[1] = Math.Pow(10, -8);//this is the fraction of biocomponent in the brush
+            
             XBrushGUESS[0] = 0.97;//this is the fraction of polymer in the brush
+            for(int i=1;i<XBrushGUESS.Length;i++)
+                XBrushGUESS[i] = Math.Pow(10, -8);//this is the fraction of biocomponent in the brush
 
             //XBrushGUESS[0] = 9*Math.Pow(10, -8);//this is the fraction of biocomponent in the brush
             //XBrushGUESS[1] = 0;//this is the fraction of polymer in the brush
@@ -577,13 +578,22 @@ namespace Polymer_brush
 
 
                 }
-                if (X[0] > 1 || X[1] > 1)
-                    ;
+                //if (X[0] > 1 || X[1] > 1)
+                 //   ;
                 if (double.IsNaN(X[0]))
                     ;
 
+                string newthonWriterLine = "";
+                for (int i = 0; i < L; i++)
+                    newthonWriterLine += X[i] + ";";
+                for (int i = 0; i < L; i++)
+                    newthonWriterLine += F[i] + ";";
+                newthonWriterLine += FNORM + ";";
+                for (int i = 0; i < L; i++)
+                    for (int j = 0; j < L; j++)
+                        newthonWriterLine += J[i,j] + ";";
 
-                newthonWriter.WriteLine(iterations + ";" + X[0] + ";" + X[1] + ";" + F[0]+ ";" +F[1]+ ";" + FNORM +";" + J[0,0]+ ";" + J[0,1]+ ";" + J[1,0]+ ";" + J[1,1] + ";");
+                newthonWriter.WriteLine(iterations + ";" + newthonWriterLine);
                 FNORM = 0;
                 for (int i = 0; i < L; i++)
                     FNORM += F[i] * F[i];
@@ -690,7 +700,14 @@ namespace Polymer_brush
             }
             //F[NumberOfComponents - 2] = Math.Pow((mixingPartOfExchangeChemicalPotentials[NumberOfComponents - 1] + BA * (R * (y_cur - 1.0)) * (R * (y_cur - 1.0)) - Lamb_Pol), 2);//!polymer error
 
-            Console.WriteLine("BrushEquations values: " + F[0] + "  " + F[1] + " ----------------Volume fractions:   " + X[0] + "    " + X[1]);
+            string line = "";
+            for (int i = 0; i < F.Length; i++)
+                line += F[0] + "  ";
+            string line2 = "";
+            for (int i = 0; i < X.Length; i++)
+                line2 += X[0] + "  ";
+
+            Console.WriteLine("BrushEquations values: " + line + " ----------------Volume fractions:   " + line2);
 
         }
         static double CalculateOsmoticPressure(double[] _volumeFractions)
@@ -721,7 +738,7 @@ namespace Polymer_brush
                 double[] exchangeChemPotentials;
                 Lagrmix(NumberOfComponents, volumeFractions, out exchangeChemPotentials);
                 value.Add(Fmix);
-                value.Add(exchangeChemPotentials[2]);
+                value.Add(exchangeChemPotentials[1]);
                 output.Add(new KeyValuePair<double, List<double>>(volumeFractions[AcomponentIndex], value));
                 volumeFractions[AcomponentIndex] += step;
                 volumeFractions[BcomponentIndex] = 1 - volumeFractions[AcomponentIndex];
