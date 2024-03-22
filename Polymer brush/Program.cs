@@ -280,7 +280,7 @@ namespace Polymer_brush
             //chemPotAtTheBorder[0] = chemPotInTheBulk[0];//solvent
             //chemPotAtTheBorder[1] = chemPotInTheBulk[1];//bio
             //Finding volume fractions at the border
-            double ERREL = Math.Pow(10, -2);
+            double ERREL = Math.Pow(10, -6);
 
             double[] XBorderGUESS = new double[NumberOfComponents - 1];//Everything except polymer
 
@@ -397,6 +397,7 @@ namespace Polymer_brush
             
             FindVolumeFractionsInTheBrushForPoint(out Xbrush, x);
             func_log = Xbrush[1].ToString()+"_;";
+            
             double fay = Xbrush[1];
             return fay * x * x;
 
@@ -448,7 +449,7 @@ namespace Polymer_brush
         static void FindVolumeFractionsInTheBrushForPoint(out double[] XBrush, double y_cur)
         {
             //!Solving(localy) system of non - linear equations
-            double ERREL = Math.Pow(10, -2);
+            double ERREL = Math.Pow(10, -6);
             point_y = y_cur;
             int ITMAX = 600;
             double[] XBrushGUESS = new double[NumberOfComponents - 1];//Everything except solvent
@@ -565,7 +566,7 @@ namespace Polymer_brush
                     ;
                 if (X[0] == 0.351600000000027)
                     ;
-                if (point_y == 1.0257563196847368)
+                if (Math.Abs(point_y - 1.56112846591455)<0.0001)
                     ;
                 //Calculate Jacobian
                 for (int i = 0; i < L; i++)
@@ -684,8 +685,9 @@ namespace Polymer_brush
                 }
                 //Func(X, out F, L);
 
-               
 
+                if (Math.Abs(X[0] - 0.351600000000027) < 0.001)
+                    ;
                 string funcLog = Func(X, out F, L);
                 FNORM = 0;
                 for (int i = 0; i < L; i++)
@@ -712,11 +714,11 @@ namespace Polymer_brush
                         newthonWriterLine += J[i, j] + ";";
                 newthonWriter.WriteLine(iterations + ";" + newthonWriterLine + funcLog);
                 ///////////////////////////////////////////////////////////////////////////
-                if (X[0] == 0.351600000000027)
-                        ;
+                
             }
             newthonWriter.WriteLine("Converged!");
             newthonWriter.Close();
+            
         }
         static bool ContainsOutrangeValues(double[] X)
         {
@@ -778,8 +780,12 @@ namespace Polymer_brush
             //F[0] = (mixingPartOfExchangeChemicalPotentials[0] - chemPotAtTheBorder[0]) * (mixingPartOfExchangeChemicalPotentials[0] - chemPotAtTheBorder[0]);//solvent
             //F[1] = (mixingPartOfExchangeChemicalPotentials[1] - chemPotAtTheBorder[1]) * (mixingPartOfExchangeChemicalPotentials[1] - chemPotAtTheBorder[1]);//bio
             F[0] = osmoticPressure * osmoticPressure;
+            F[0] = osmoticPressure;
             for (int i = 2; i < NumberOfComponents; i++)
                 F[i-1] = (mixingPartOfExchangeChemicalPotentials[i] - chemPotAtTheBorder[i]) * (mixingPartOfExchangeChemicalPotentials[i] - chemPotAtTheBorder[i]);//bio
+            for (int i = 2; i < NumberOfComponents; i++)
+                F[i - 1] = (mixingPartOfExchangeChemicalPotentials[i] - chemPotAtTheBorder[i]);//bio
+
             return logString;
         }
         static string BrushEquations(double[] X, out double[] F, int L)
@@ -811,7 +817,12 @@ namespace Polymer_brush
                     F[i - 1] = Math.Pow((mixingPartOfExchangeChemicalPotentials[1] + BA * (R * (y_cur - 1.0)) * (R * (y_cur - 1.0)) - Lamb_Pol), 2);//!polymer error
                 else
                     F[i-1] = (mixingPartOfExchangeChemicalPotentials[i] - chemPotInTheBulk[i]) * (mixingPartOfExchangeChemicalPotentials[i] - chemPotInTheBulk[i]);// !bio contaminant error
-               // F[i] = X[i + 1]* X[i + 1];
+
+                if (i == 1)
+                    F[i - 1] = Math.Pow((mixingPartOfExchangeChemicalPotentials[1] + BA * (R * (y_cur - 1.0)) * (R * (y_cur - 1.0)) - Lamb_Pol), 1);//!polymer error
+                else
+                    F[i - 1] = (mixingPartOfExchangeChemicalPotentials[i] - chemPotInTheBulk[i]);// !bio contaminant error
+
             }
             //F[NumberOfComponents - 2] = Math.Pow((mixingPartOfExchangeChemicalPotentials[NumberOfComponents - 1] + BA * (R * (y_cur - 1.0)) * (R * (y_cur - 1.0)) - Lamb_Pol), 2);//!polymer error
 
