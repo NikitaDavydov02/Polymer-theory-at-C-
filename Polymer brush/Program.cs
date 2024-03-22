@@ -451,6 +451,8 @@ namespace Polymer_brush
             //!Solving(localy) system of non - linear equations
             double ERREL = Math.Pow(10, -6);
             point_y = y_cur;
+            if (Math.Abs(y_cur - 1.41210111495579)<0.001)
+                ;
             int ITMAX = 600;
             double[] XBrushGUESS = new double[NumberOfComponents - 1];//Everything except solvent
             double[] XBrushReduced = new double[NumberOfComponents - 1];//Everything except solvent
@@ -463,7 +465,8 @@ namespace Polymer_brush
             //XBrushGUESS[0] = 9*Math.Pow(10, -8);//this is the fraction of biocomponent in the brush
             //XBrushGUESS[1] = 0;//this is the fraction of polymer in the brush
             double FNORM;
-
+            if (Math.Abs(point_y - 1.41210111495579) < 0.001)
+                ;
             DNEQNF(BrushEquations, ERREL, NumberOfComponents - 1, ITMAX, XBrushGUESS, out XBrushReduced, out FNORM);
 
             double volumeFractionsSum = 0;
@@ -542,8 +545,7 @@ namespace Polymer_brush
         }
         static void DNEQNF(NonlinearSystem Func, double ERREL, int L, int ITMAX, double[] XGuess, out double[] X, out double FNORM)
         {
-            if (point_y == 1.0257563196847368)
-                ;
+            int splitTransitions = 0;
             newthonWriter = new StreamWriter(File.Create("newthon_log.txt"));
             // newthonWriter.WriteLine("Iteration; X0; X1; F0; F1; FNORM; J00; J01; J10; J11;");
             newthonWriter.WriteLine("Iteration; X0; F0; FNORM; J00;");
@@ -679,27 +681,34 @@ namespace Polymer_brush
                         throw new Exception();
                     //Split
                     if (deltaX[0] > 0)
-                        X[0] = mixingPartModule.segregationPoints[1] + 0.1;
+                        X[0] = mixingPartModule.segregationPoints[1] + 0.01;
                     if (deltaX[0] < 0)
                         X[0] = mixingPartModule.segregationPoints[0] - 0.1;
+                    splitTransitions++;
                 }
-                //Func(X, out F, L);
+                iterations++;
+                if (iterations > ITMAX)
+                {
+                    if (splitTransitions > ITMAX * 0.2)
+                    {
+                        //Split
+                        newthonWriter.WriteLine("Split");
+                        newthonWriter.Close();
+                        X[0] = mixingPartModule.segregationPoints[0];
+                        return;
+                    }
+                    else
+                    {
+                        newthonWriter.Close();
+                        integralLogWriter.Close();
+                        throw new Exception(" Newton method did not manage to find solution for system of equations");
 
-
-                if (Math.Abs(X[0] - 0.351600000000027) < 0.001)
-                    ;
+                    }
+                }
                 string funcLog = Func(X, out F, L);
                 FNORM = 0;
                 for (int i = 0; i < L; i++)
                     FNORM += F[i] * F[i];
-                iterations++;
-                if (iterations > ITMAX)
-                {
-                    newthonWriter.Close();
-                    integralLogWriter.Close();
-                    throw new Exception(" Newton method did not manage to find solution for system of equations");
-                }
-
                 ///////////////////////////////////////////////////////////////////////////
                 if (X[0] < 0.5)
                     ;
@@ -788,6 +797,7 @@ namespace Polymer_brush
 
             return logString;
         }
+        static double targetMixingPotential;
         static string BrushEquations(double[] X, out double[] F, int L)
         {
             string logString = "";
@@ -809,7 +819,7 @@ namespace Polymer_brush
             F = new double[L];
 
             //F[0] = (mixingPartOfExchangeChemicalPotentials[1] - chemPotInTheBulk[1]) * (mixingPartOfExchangeChemicalPotentials[1] - chemPotInTheBulk[1]);// !bio contaminant error
-            double targetMixingPotential = -(BA * (R * (y_cur - 1.0)) * (R * (y_cur - 1.0)) - Lamb_Pol);
+            targetMixingPotential = -(BA * (R * (y_cur - 1.0)) * (R * (y_cur - 1.0)) - Lamb_Pol);
             ;
             for (int i = 1; i < NumberOfComponents; i++)
             {
