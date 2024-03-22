@@ -347,18 +347,19 @@ namespace Polymer_brush
 
 
         }
+        static string func_log = "";
         static double CalculateIntegralWithDefeniteNumberOfTrapezoids(double integrationMin, double integrationMax, double s, int n, Func<double, List<double>, double> func, List<double> parameters)
         {
             integralLogWriter.WriteLine("    Sum Trapezoinds " + n);
             //s = 0;
             if (n == 1)
             {
-                integralLogWriter.WriteLine("        " + "Iter" + " ; " + "x" + " ; " + "add" + "; " + "sum");
+                integralLogWriter.WriteLine("        " + "Iter" + " ; " + "x" + " ; " + "add" + "; " + "sum;" );
 
                 double f_min = func(integrationMin, parameters);
                 double f_max = func(integrationMax, parameters);
                 s = 0.5 * (integrationMax - integrationMin) * (f_min+f_max);
-                integralLogWriter.WriteLine("        " + 1 + " ; " + (integrationMin+ integrationMax)/2 + " ; " + s + "; " + s);
+                integralLogWriter.WriteLine("        " + 1 + " ; " + (integrationMin+ integrationMax)/2 + " ; " + s + "; " + s + "; "+func_log);
 
             }
             else
@@ -379,7 +380,7 @@ namespace Polymer_brush
                     if (double.IsNaN(add))
                         ;
                     sum += add;
-                    integralLogWriter.WriteLine("        " + counter + " ; " + x + " ; " + add + "; " + sum);
+                    integralLogWriter.WriteLine("        " + counter + " ; " + x + " ; " + add + "; " + sum + "; " + func_log+";");
 
                     x += del;
                     
@@ -395,6 +396,7 @@ namespace Polymer_brush
             //Lamb_Pol = chemPotInTheBulk[2] + BA * (R * (  - 1)) * (R * (  - 1));
             
             FindVolumeFractionsInTheBrushForPoint(out Xbrush, x);
+            func_log = Xbrush[1].ToString()+"_;";
             double fay = Xbrush[1];
             return fay * x * x;
 
@@ -561,7 +563,7 @@ namespace Polymer_brush
             {
                 if (FNORM == 1.4508430377064)
                     ;
-                if (X[0] == 0.95813023036289)
+                if (X[0] == 0.351600000000027)
                     ;
                 if (point_y == 1.0257563196847368)
                     ;
@@ -710,6 +712,8 @@ namespace Polymer_brush
                         newthonWriterLine += J[i, j] + ";";
                 newthonWriter.WriteLine(iterations + ";" + newthonWriterLine + funcLog);
                 ///////////////////////////////////////////////////////////////////////////
+                if (X[0] == 0.351600000000027)
+                        ;
             }
             newthonWriter.WriteLine("Converged!");
             newthonWriter.Close();
