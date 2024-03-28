@@ -42,6 +42,7 @@ namespace Polymer_brush
         {
 			if (segregationPoints != null && (X[1] >= segregationPoints[0] && X[1] < segregationPoints[1]))
 			{
+				
 				double output = segregationMixingEnergies[0] + (X[1] - segregationPoints[0]) * (segregationMixingEnergies[1] - segregationMixingEnergies[0]) / (segregationPoints[1] - segregationPoints[0]);
 				//output += X[1] * Math.Log(X[1]) / Program.size[1];
                 //output += Program.chi[0, 1] * X[0] * X[1];
@@ -82,7 +83,7 @@ namespace Polymer_brush
 					if(j>i && X[i] != 0	&& X[j] != 0)
 					{
 						if(i==0&&j==1)
-                            a += (Program.chi[i, j] + 2.0 * X[1] * X[1]) * X[i] * X[j];
+                            a += (Program.chi[i, j] + Program.c * X[1] * X[1]) * X[i] * X[j];
 						else
 							a += Program.chi[i, j] * X[i] * X[j];
                     }
@@ -124,32 +125,32 @@ namespace Polymer_brush
 		*/
         public double CalculateExchangeChemialPotentialOfComponent(double[] X, int componenIndex)
 		{
-			
-			double f = CalculateMixingFreeEnergy(X);
-			//double f = CalculateGugenheimMixingFreeEnergy(X);
+			double relativeDelta = Math.Pow(10, -2);
+			double f0 = CalculateMixingFreeEnergy(X);
 			double x = X[componenIndex];
 			double max_dx = 1 - x;
 			if (X[0] < max_dx)
 				max_dx = X[0];
-			double dx = 0.01 * x;
+			double dx = relativeDelta * x;
 			if (dx == 0)
-				dx = 0.01;
+				dx = relativeDelta;
 			if (dx > max_dx)
 			{
                 dx = max_dx / 2;
 				if (max_dx == 0)
-					dx = -0.01;
+					dx = -relativeDelta;
             }
-
 			double oldSolventVolumeFraction = X[0];
+			//NEW COMPOSITION
 			double x_dx = x + dx;
 			X[componenIndex] = x_dx;
 			X[0] -= dx;
 			double f_df = CalculateMixingFreeEnergy(X);
-			//double f_df = CalculateGugenheimMixingFreeEnergy(X);
+
+			////////////////RETURN TO OLD//////////////////////
 			X[0] = oldSolventVolumeFraction;
 			X[componenIndex] = x;
-			double output = (f_df - f) / dx;
+			double output = (f_df - f0) / dx;
 			//double analiticalResult = CalculateExchangeChemialPotentialOfComponentAnaliticaly(X, componenIndex);
             return output;
 

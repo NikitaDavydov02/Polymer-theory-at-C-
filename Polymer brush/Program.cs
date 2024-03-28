@@ -17,6 +17,7 @@ namespace Polymer_brush
         public static double[] chemPotInTheBulk, volumeFractionsInTheBulk, Lagrbulk, size;
         public static double[] chemPotOutsideOfTheStep;
         public static double osmoticPressureOutsideOfTheStep;
+        public static double c;
         //public static double[] segregationPoints;
 
         public static double[,] chi;
@@ -58,7 +59,9 @@ namespace Polymer_brush
             using (StreamWriter sw = new StreamWriter("mixingFenergyOfSolventAndPolymer.txt"))
             {
                 foreach (KeyValuePair<double, List<double>> pair in mixingEnergy)
+                {
                     sw.WriteLine(pair.Key + "  ;  " + pair.Value[0] + ";" + pair.Value[1] + ";");
+                }
             }
             //segregationPoints = FindSegregationPointsBetweenSolventAndPolymer();
             //return;
@@ -122,6 +125,7 @@ namespace Polymer_brush
         }
         static void Enter()
         {
+            c = 0;
             pi = 3.1415926;
             coe = (3.0 / 8.0) * pi * pi;
             aA = 6.8 * Math.Pow(10, -9);
@@ -146,7 +150,7 @@ namespace Polymer_brush
             //!areaPerChain_MAX = 3.0d0 * aA * *2 * (3.1415926 * 4.0 * rNB * *2 / 3.0d0) **(1.0 / 3.0)
             //				 !write(*, *) BA,R,rNB* aA, areaPerChain,10.0 * (nu + 1.1) * aA * *2,y_max,BA * (R * (y_max - 1.0)) * *2,
             //!stop
-            NumberOfComponents = 2;
+            NumberOfComponents = 3;
             NumberOfPolymerGroupTypes = 1;
 
 
@@ -156,7 +160,7 @@ namespace Polymer_brush
 
             size[0] = 1.0;// ! solvent
             size[1] = rNA;// polymer
-            //size[2] = 3.0;// bio
+            size[2] = 3.0;// bio
             //size[2] = 60.0;
 
             chi = new double[NumberOfComponents + NumberOfPolymerGroupTypes - 1, NumberOfComponents + NumberOfPolymerGroupTypes - 1];
@@ -170,8 +174,9 @@ namespace Polymer_brush
             fractionsOfGroups[0] = 1;
             //fractionsOfGroups[1] = 0;
 
-            chi[0, 1] = 0.5;//solv-bio
-
+            chi[0, 1] = -1;//solv-pol
+            chi[0, 2] = 0;//solv-bio
+            chi[1, 2] = 0;//pol-bio
             /*//Solvent with other
             chi[0, 3] = -1;//! solv - bio
             chi[0, 1] = 0;//! solv - polym first group
@@ -198,7 +203,8 @@ namespace Polymer_brush
             volumeFractionsInTheBulk = new double[NumberOfComponents];
             for (int i = 0; i < NumberOfComponents; i++)
                 volumeFractionsInTheBulk[i] = 0.0;
-            volumeFractionsInTheBulk[0] = 1.00;//solvent
+            volumeFractionsInTheBulk[2] = 0.02;//bio
+            volumeFractionsInTheBulk[0] = 0.98;//solvent
             //volumeFractionsInTheBulk[2] = 1.0 - volumeFractionsInTheBulk[0];//bioadditive
 
             chemPotInTheBulk = new double[NumberOfComponents];
@@ -289,7 +295,8 @@ namespace Polymer_brush
             //chemPotAtTheBorder[0] = chemPotInTheBulk[0];//solvent
             //chemPotAtTheBorder[1] = chemPotInTheBulk[1];//bio
             //Finding volume fractions at the border
-            double ERREL = Math.Pow(10, -6);
+            double ERREL = Math.Pow(10, -4);
+            //double ERREL = Math.Pow(10, -4);
 
             double[] XBorderGUESS = new double[NumberOfComponents - 1];//Everything except polymer
 
@@ -487,39 +494,9 @@ namespace Polymer_brush
             XBrush[0] = 1 - volumeFractionsSum;
             //TryingToFindStepInTheBrush(out XInside, y_cur, XBrush);
         }
-        /*static void TryingToFindStepInTheBrush(out double[] XInside, double y_cur, double[] volFractionsOutside)
-		{
-            double ERREL = Math.Pow(10, -4);
-            point_y = y_cur;
-            int ITMAX = 600;
-            double[] XBrushGUESS = new double[NumberOfComponents - 1];
-            double[] XBrushReduced = new double[NumberOfComponents - 1];
-            XInside = new double[NumberOfComponents];
-            XBrushGUESS[0] = Math.Pow(10, -8);//this is the fraction of biocomponent in the brush
-            XBrushGUESS[1] = 0.98f;//this is the fraction of polymer in the brush
-            double FNORM;
-
-			chemPotOutsideOfTheStep = new double[NumberOfComponents];
-            Lagrmix_PolA(NumberOfComponents, volFractionsOutside, out chemPotOutsideOfTheStep);
-			osmoticPressureOutsideOfTheStep = CalculateOsmoticPressure(volFractionsOutside);
-
-            DNEQNF(StepEquations, ERREL, NumberOfComponents - 1, ITMAX, XBrushGUESS, out XBrushReduced, out FNORM);
-
-			
-            double volumeFractionsSum = 0;
-            for (int i = 1; i < NumberOfComponents; i++)
-            {
-                XInside[i] = XBrushReduced[i - 1];
-                volumeFractionsSum += XInside[i];
-            }
-            XInside[0] = 1 - volumeFractionsSum;
-			if (!double.IsNaN(XInside[0]))
-				if (Math.Abs(XInside[0] - volFractionsOutside[0]) > 0.01)
-					;
-        }*/
         delegate string NonlinearSystem(double[] X, out double[] F, int L);
 
-        static double[,] CalculateJacobian(NonlinearSystem Func,double[] _X)
+       /* static double[,] CalculateJacobian(NonlinearSystem Func,double[] _X)
         {
             double[] X = new double[_X.Length];
             for (int i = 0; i < X.Length; i++)
@@ -542,7 +519,7 @@ namespace Polymer_brush
                         dx /= 2;
                         X[j] = dx + old_x;
                     }
-
+                    
 
                     Func(X, out F, X.Length);
                     double f_df = F[i];
@@ -551,7 +528,7 @@ namespace Polymer_brush
                     Func(X, out F, X.Length);
                 }
             return J;
-        }
+        }*/
         static void DNEQNF(NonlinearSystem Func, double ERREL, int L, int ITMAX, double[] XGuess, out double[] X, out double FNORM)
         {
             int splitTransitions = 0;
@@ -573,12 +550,6 @@ namespace Polymer_brush
             double[,] J = new double[L, XGuess.Length];
             while (FNORM >= ERREL)
             {
-                if (FNORM == 1.4508430377064)
-                    ;
-                if (X[0] == 0.351600000000027)
-                    ;
-                if (Math.Abs(point_y - 1.56112846591455)<0.0001)
-                    ;
                 //Calculate Jacobian
                 for (int i = 0; i < L; i++)
                     for (int j = 0; j < X.Length; j++)
@@ -595,7 +566,11 @@ namespace Polymer_brush
                             dx /= 2;
                             X[j] = dx + old_x;
                         }
-
+                        if (X.Sum() > 1)
+                        {
+                            X[j] = old_x - dx;
+                            dx *= -1;
+                        }
 
                         Func(X, out F, L);
                         double f_df = F[i];
@@ -604,8 +579,6 @@ namespace Polymer_brush
                         Func(X, out F, L);
                     }
                 //J=CalculateJacobian(Func, X);
-                if (J[0,0] == 101.477071265303)
-                    ;
                 double det = Matrix.determinantGauss(L, J, 0, false);
                 double eps = 0.000000000001;
                 for (int j = 0; j < X.Length; j++)
@@ -618,42 +591,6 @@ namespace Polymer_brush
                     throw new Exception();
                     ;
                 }
-                /*if (Math.Abs(det) < eps)
-                {
-                    if (det == 0)
-                    {
-                        //Node transition
-                        integralLogWriter.Close();
-                        newthonWriter.Close();
-                        throw new Exception();
-                        ;
-                    }
-                    integralLogWriter.Close();
-                    newthonWriter.Close();
-                    throw new Exception();
-                    segregation points
-                    //Node transition
-                    double d;
-                    do
-                    {
-                        for (int j = 0; j < X.Length; j++)
-                            X[j] += deltaX[j];
-                        for (double devisionStepDegree = 1; ContainsOutrangeValues(X); devisionStepDegree++)
-                        {
-                            for (int j = 0; j < X.Length; j++)
-                            {
-                                deltaX[j] /= 2;
-                                X[j] = oldX[j] + deltaX[j];
-                            }
-
-
-                        }
-                        d = Matrix.determinantGauss(L, CalculateJacobian(Func, X), 0, false);
-                    }
-                    while (Math.Abs(d) <eps);
-                    ;
-            }
-            */
 
 
                 double[,] reverse = Matrix.reverseMatrix(L, J);
@@ -683,6 +620,7 @@ namespace Polymer_brush
                         X[j] = oldX[j] + deltaX[j];
                     }
                 }
+                //<Split>
                 //Check if in split zone
                 if(X[0]>=mixingPartModule.segregationPoints[0]&& X[0]<= mixingPartModule.segregationPoints[1])
                 {
@@ -695,6 +633,7 @@ namespace Polymer_brush
                         X[0] = mixingPartModule.segregationPoints[0] - 0.1;
                     splitTransitions++;
                 }
+                //</Split>
                 iterations++;
                 if (iterations > ITMAX)
                 {
@@ -704,6 +643,7 @@ namespace Polymer_brush
                         newthonWriter.WriteLine("Split");
                         newthonWriter.Close();
                         X[0] = mixingPartModule.segregationPoints[0];
+
                         return;
                     }
                     else
@@ -719,8 +659,6 @@ namespace Polymer_brush
                 for (int i = 0; i < L; i++)
                     FNORM += F[i] * F[i];
                 ///////////////////////////////////////////////////////////////////////////
-                if (X[0] < 0.5)
-                    ;
                 string newthonWriterLine = "";
                 for (int i = 0; i < L; i++)
                     newthonWriterLine += X[i] + ";";
@@ -745,34 +683,6 @@ namespace Polymer_brush
                     return true;
             return false;
         }
-        /*static void StepEquations(double[] X, out double[] F, int L)
-        {
-            double nu = 2;
-            double y_cur = point_y;
-            double volumeFractionSum = 0;
-            for (int i = 0; i < NumberOfComponents - 1; i++)
-            {
-                fipolimer[i + 1] = X[i];
-                volumeFractionSum += X[i];
-            }
-            fipolimer[0] = 1 - volumeFractionSum;
-            double[] mixingPartOfExchangeChemicalPotentials;
-            //!Calculate values that in ideal case must be equal to Lagrangian multipliers based on current concentrations
-            Lagrmix_PolA(NumberOfComponents, fipolimer, out mixingPartOfExchangeChemicalPotentials);
-            F = new double[L];
-			double insideOsmoticPressure = CalculateOsmoticPressure(fipolimer);
-
-            //F[0] = (mixingPartOfExchangeChemicalPotentials[1] - chemPotInTheBulk[1]) * (mixingPartOfExchangeChemicalPotentials[1] - chemPotInTheBulk[1]);// !bio contaminant error
-             for (int i = 0; i < NumberOfComponents - 2; i++)
-             {
-                 F[i] = (mixingPartOfExchangeChemicalPotentials[i + 1] - chemPotOutsideOfTheStep[i + 1]) * (mixingPartOfExchangeChemicalPotentials[i + 1] - chemPotOutsideOfTheStep[i + 1]);// !bio contaminant error
-
-             }
-            F[0] = (mixingPartOfExchangeChemicalPotentials[2] - chemPotOutsideOfTheStep[2]) * (mixingPartOfExchangeChemicalPotentials[2] - chemPotOutsideOfTheStep[2]);// !bio contaminant error
-
-			F[1] = (insideOsmoticPressure - osmoticPressureOutsideOfTheStep) * (insideOsmoticPressure - osmoticPressureOutsideOfTheStep);
-        }*/
-
         static string BorderEquations(double[] X, out double[] F, int L)
         {
             string logString = "";
