@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.IO;
 using System.Runtime.Remoting.Messaging;
 using System.Reflection;
+using Polymer_brush.Components;
 
 namespace Polymer_brush
 {
@@ -110,6 +111,14 @@ namespace Polymer_brush
 
             sw.Close();
             Console.ReadLine();
+        }
+        static void SaveInputSettings()
+        {
+            Input input = new Input();
+            input.AreaPerChain = areaPerChain;
+            input.Components = new List<Component>();
+            Component solvent = new Component();
+
         }
         static void Enter()
         {
