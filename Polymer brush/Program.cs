@@ -18,6 +18,7 @@ namespace Polymer_brush
         public static double[] chemPotOutsideOfTheStep;
         public static double osmoticPressureOutsideOfTheStep;
         public static double c;
+        public static int MaxNumberOfComponent = 50;
         //public static double[] segregationPoints;
 
         public static double[,] chi;
