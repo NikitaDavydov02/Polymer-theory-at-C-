@@ -126,7 +126,7 @@ namespace Polymer_brush
         }
         static void Enter()
         {
-            c = 0;
+            c = 1.0;
             pi = 3.1415926;
             coe = (3.0 / 8.0) * pi * pi;
             aA = 6.8 * Math.Pow(10, -9);
@@ -151,11 +151,11 @@ namespace Polymer_brush
             //!areaPerChain_MAX = 3.0d0 * aA * *2 * (3.1415926 * 4.0 * rNB * *2 / 3.0d0) **(1.0 / 3.0)
             //				 !write(*, *) BA,R,rNB* aA, areaPerChain,10.0 * (nu + 1.1) * aA * *2,y_max,BA * (R * (y_max - 1.0)) * *2,
             //!stop
-            NumberOfComponents = 3;
+            NumberOfComponents = 2;
             NumberOfPolymerGroupTypes = 1;
 
 
-            size = new double[NumberOfComponents];
+            size = new double[MaxNumberOfComponent];
             for (int i = 0; i < NumberOfComponents; i++)
                 size[i] = 1.0;
 
@@ -164,7 +164,7 @@ namespace Polymer_brush
             size[2] = 3.0;// bio
             //size[2] = 60.0;
 
-            chi = new double[NumberOfComponents + NumberOfPolymerGroupTypes - 1, NumberOfComponents + NumberOfPolymerGroupTypes - 1];
+            chi = new double[MaxNumberOfComponent, MaxNumberOfComponent];
             chiMatrixSize = NumberOfComponents + NumberOfPolymerGroupTypes - 1;
             //solv
             //bio
@@ -175,7 +175,7 @@ namespace Polymer_brush
             fractionsOfGroups[0] = 1;
             //fractionsOfGroups[1] = 0;
 
-            chi[0, 1] = -1;//solv-pol
+            chi[0, 1] = 0.5;//solv-pol
             chi[0, 2] = 0;//solv-bio
             chi[1, 2] = 0;//pol-bio
             /*//Solvent with other
@@ -204,9 +204,9 @@ namespace Polymer_brush
             volumeFractionsInTheBulk = new double[NumberOfComponents];
             for (int i = 0; i < NumberOfComponents; i++)
                 volumeFractionsInTheBulk[i] = 0.0;
-            volumeFractionsInTheBulk[2] = 0.02;//bio
-            volumeFractionsInTheBulk[0] = 0.98;//solvent
-            //volumeFractionsInTheBulk[2] = 1.0 - volumeFractionsInTheBulk[0];//bioadditive
+            //volumeFractionsInTheBulk[2] = 0.02;//bio
+           // volumeFractionsInTheBulk[0] = 0.98;//solvent
+            volumeFractionsInTheBulk[0] = 1.0;
 
             chemPotInTheBulk = new double[NumberOfComponents];
             chemPotAtTheBorder = new double[NumberOfComponents];
