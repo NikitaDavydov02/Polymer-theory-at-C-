@@ -38,16 +38,19 @@ namespace Polymer_brush
 		{
 			FindSegregationPointsBetweenSolventAndPolymer();
 		}
-		public double CalculateMixingFreeEnergy(double[] X)
+		public double CalculateMixingFreeEnergy(double[] X, bool withSegregation = true)
         {
-			if (segregationPoints != null && (X[1] >= segregationPoints[0] && X[1] < segregationPoints[1]))
-			{
-				
-				double output = segregationMixingEnergies[0] + (X[1] - segregationPoints[0]) * (segregationMixingEnergies[1] - segregationMixingEnergies[0]) / (segregationPoints[1] - segregationPoints[0]);
-				//output += X[1] * Math.Log(X[1]) / Program.size[1];
-                //output += Program.chi[0, 1] * X[0] * X[1];
-                //output += Program.chi[0, 2] * X[2] * X[1];
-                return output;
+            if (withSegregation)
+            {
+				if (segregationPoints != null && (X[1] >= segregationPoints[0] && X[1] < segregationPoints[1]))
+				{
+
+					double output = segregationMixingEnergies[0] + (X[1] - segregationPoints[0]) * (segregationMixingEnergies[1] - segregationMixingEnergies[0]) / (segregationPoints[1] - segregationPoints[0]);
+					//output += X[1] * Math.Log(X[1]) / Program.size[1];
+					//output += Program.chi[0, 1] * X[0] * X[1];
+					//output += Program.chi[0, 2] * X[2] * X[1];
+					return output;
+				}
 			}
             return CalculateFloryMixingFreeEnergy(X);
             return CalculateGugenheimMixingFreeEnergy(X);

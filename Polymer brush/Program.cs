@@ -55,7 +55,8 @@ namespace Polymer_brush
             double u_bio = 0;
             Enter();
 
-
+            CalculateMixingSurface(0.005);
+            return;
             List<KeyValuePair<double, List<double>>> mixingEnergy = CalculateMixingEnergyProfile(1, 0, 20);
             using (StreamWriter sw = new StreamWriter("mixingFenergyOfSolventAndPolymer.txt"))
             {
@@ -126,7 +127,7 @@ namespace Polymer_brush
         }
         static void Enter()
         {
-            c = 1.0;
+            c = 2.0;
             pi = 3.1415926;
             coe = (3.0 / 8.0) * pi * pi;
             aA = 6.8 * Math.Pow(10, -9);
@@ -151,7 +152,7 @@ namespace Polymer_brush
             //!areaPerChain_MAX = 3.0d0 * aA * *2 * (3.1415926 * 4.0 * rNB * *2 / 3.0d0) **(1.0 / 3.0)
             //				 !write(*, *) BA,R,rNB* aA, areaPerChain,10.0 * (nu + 1.1) * aA * *2,y_max,BA * (R * (y_max - 1.0)) * *2,
             //!stop
-            NumberOfComponents = 2;
+            NumberOfComponents = 3;
             NumberOfPolymerGroupTypes = 1;
 
 
@@ -177,7 +178,7 @@ namespace Polymer_brush
 
             chi[0, 1] = 0.5;//solv-pol
             chi[0, 2] = 0;//solv-bio
-            chi[1, 2] = 0;//pol-bio
+            chi[1, 2] = 0.3;//pol-bio
             /*//Solvent with other
             chi[0, 3] = -1;//! solv - bio
             chi[0, 1] = 0;//! solv - polym first group
@@ -204,9 +205,9 @@ namespace Polymer_brush
             volumeFractionsInTheBulk = new double[NumberOfComponents];
             for (int i = 0; i < NumberOfComponents; i++)
                 volumeFractionsInTheBulk[i] = 0.0;
-            //volumeFractionsInTheBulk[2] = 0.02;//bio
-           // volumeFractionsInTheBulk[0] = 0.98;//solvent
-            volumeFractionsInTheBulk[0] = 1.0;
+            volumeFractionsInTheBulk[2] = 0.02;//bio
+            volumeFractionsInTheBulk[0] = 0.98;//solvent
+            //volumeFractionsInTheBulk[0] = 1.0;
 
             chemPotInTheBulk = new double[NumberOfComponents];
             chemPotAtTheBorder = new double[NumberOfComponents];
@@ -778,6 +779,34 @@ namespace Polymer_brush
                 osmoticPressure -= _volumeFractions[i] * mixingPartOfExchangeChemicalPotentials[i];
             return osmoticPressure;
         }
+        static void CalculateMixingSurface(double step)
+        {
+           // List<KeyValuePair<Vector3, double>> output = new List<KeyValuePair<Vector3, double>>();
+            if (NumberOfComponents != 3)
+                return;
+            double x3;
+            double[] fractions = new double[3];
+            using(StreamWriter surfaceWriter = new StreamWriter("surface.txt"))
+            {
+                surfaceWriter.WriteLine("Solvent;Polymer;Bio;F;");
+                for (double x1 = step; x1 < 1; x1+=step)
+                {
+                    fractions[0] = x1;
+                    for (double x2 = step; x2 < 1; x2 += step)
+                    {
+                        x3 = 1 - x1 - x2;
+                        if (x3 <= 0)
+                            continue;
+                        fractions[1] = x2;
+                        fractions[2] = x3;
+                        double F = mixingPartModule.CalculateMixingFreeEnergy(fractions,false);
+                        surfaceWriter.WriteLine(x1 + ";" + x2 + ";" + x3 + ";" + F + ";");
+                        //output.Add(new KeyValuePair<Vector3, double>(new Vector3(x1,x2,x3), F));
+                    }
+                }
+            }
+            
+        }
         static List<KeyValuePair<double, List<double>>> CalculateMixingEnergyProfile(int AcomponentIndex, int BcomponentIndex, int numberOfPoints)
         {
             List<KeyValuePair<double, List<double>>> output = new List<KeyValuePair<double, List<double>>>();
@@ -968,4 +997,17 @@ namespace Polymer_brush
 
         //}
     }
+    public struct Vector3
+    {
+        public double x1;
+        public double x2;
+        public double x3;
+        public Vector3(double x1,double x2, double x3)
+        {
+            this.x1 = x1;
+            this.x2 = x2;
+            this.x3 = x3;
+        }
+    }
+
 }
