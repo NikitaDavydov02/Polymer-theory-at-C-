@@ -55,7 +55,8 @@ namespace Polymer_brush
             double u_bio = 0;
             Enter();
 
-            CalculateMixingSurface(0.005);
+            CalculateMixingSurface(0.005, false);
+            CalculateMixingSurface(0.005,true);
             return;
             List<KeyValuePair<double, List<double>>> mixingEnergy = CalculateMixingEnergyProfile(1, 0, 20);
             using (StreamWriter sw = new StreamWriter("mixingFenergyOfSolventAndPolymer.txt"))
@@ -624,6 +625,7 @@ namespace Polymer_brush
                 }
                 //<Split>
                 //Check if in split zone
+                throw new NotImplementedException();
                 if(X[0]>=mixingPartModule.segregationPoints[0]&& X[0]<= mixingPartModule.segregationPoints[1])
                 {
                     if (NumberOfComponents != 2)
@@ -779,14 +781,19 @@ namespace Polymer_brush
                 osmoticPressure -= _volumeFractions[i] * mixingPartOfExchangeChemicalPotentials[i];
             return osmoticPressure;
         }
-        static void CalculateMixingSurface(double step)
+        static void CalculateMixingSurface(double step, bool linearized)
         {
            // List<KeyValuePair<Vector3, double>> output = new List<KeyValuePair<Vector3, double>>();
             if (NumberOfComponents != 3)
                 return;
             double x3;
             double[] fractions = new double[3];
-            using(StreamWriter surfaceWriter = new StreamWriter("surface.txt"))
+            string fileName = "";
+            if (linearized)
+                fileName = "surface_linearized.txt";
+            else
+                fileName = "surface_nonlinearized.txt";
+            using(StreamWriter surfaceWriter = new StreamWriter(fileName))
             {
                 surfaceWriter.WriteLine("Solvent;Polymer;Bio;F;");
                 for (double x1 = step; x1 < 1; x1+=step)
@@ -799,8 +806,13 @@ namespace Polymer_brush
                             continue;
                         fractions[1] = x2;
                         fractions[2] = x3;
-                        double F = mixingPartModule.CalculateMixingFreeEnergy(fractions,false);
-                        surfaceWriter.WriteLine(x1 + ";" + x2 + ";" + x3 + ";" + F + ";");
+                        double F = mixingPartModule.CalculateMixingFreeEnergy(fractions,linearized);
+                        double a;
+                        bool segregated = mixingPartModule.IsCompositionInsideSegregationZone(fractions, out a);
+                        if(linearized)
+                            surfaceWriter.WriteLine(x1 + ";" + x2 + ";" + x3 + ";" + F + ";"+ segregated+";");
+                        else
+                            surfaceWriter.WriteLine(x1 + ";" + x2 + ";" + x3 + ";" + F + ";");
                         //output.Add(new KeyValuePair<Vector3, double>(new Vector3(x1,x2,x3), F));
                     }
                 }

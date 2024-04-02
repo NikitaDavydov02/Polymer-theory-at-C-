@@ -44,18 +44,47 @@ namespace Polymer_brush
 			TernarySegregatioMixingEnergies = new List<KeyValuePair<double, double[]>>();
 			FindSegregationPointsBetweenSolventAndPolymer();
 		}
+		public bool IsCompositionInsideSegregationZone(double[] X, out double minPossibleF)
+        {
+			minPossibleF = 0;
+			double Xadditive = X[2];
+			for(int i = 0; i < TernarySegregationPoints.Count - 1; i++)
+            {
+				if(TernarySegregationPoints[i].Key<=Xadditive &&TernarySegregationPoints[i+1].Key > Xadditive)
+                {
+					//Aproximation between crossections
+					double Xadditive_min = TernarySegregationPoints[i].Key;
+					double Xadditive_max = TernarySegregationPoints[i+1].Key;
+					double x1_left_min = TernarySegregationPoints[i].Value[0];
+					double x1_left_max = TernarySegregationPoints[i+1].Value[0];
+					double x1_right_min = TernarySegregationPoints[i].Value[1];
+					double x1_right_max = TernarySegregationPoints[i + 1].Value[1];
+					/////////////
+					double x1_left = x1_left_min+ (Xadditive - Xadditive_min) * (x1_left_max - x1_left_min) / (Xadditive_max - Xadditive_min);
+					double x1_right = x1_right_min + (Xadditive - Xadditive_min) * (x1_right_max - x1_right_min) / (Xadditive_max - Xadditive_min);
+					if (X[1] >= x1_left && X[1] < x1_right)
+                    {
+						double[] leftComposition = new double[3] { 1 - x1_left - Xadditive, x1_left, Xadditive };
+						double[] rightComposition = new double[3] { 1 - x1_right - Xadditive, x1_right, Xadditive };
+						double leftF = CalculateMixingFreeEnergy(leftComposition, false);
+						double rightF = CalculateMixingFreeEnergy(rightComposition, false);
+						minPossibleF = leftF + (X[1] - x1_left) * (rightF - leftF) / (x1_right - x1_left);
+						return true;
+					}
+					return false;
+				}
+			}
+			return false;
+        }
 		public double CalculateMixingFreeEnergy(double[] X, bool withSegregation = true)
         {
             if (withSegregation)
             {
-				if (segregationPoints != null && (X[1] >= segregationPoints[0] && X[1] < segregationPoints[1]))
+				double segreagationF;
+				if (IsCompositionInsideSegregationZone(X, out segreagationF))
 				{
 
-					double output = segregationMixingEnergies[0] + (X[1] - segregationPoints[0]) * (segregationMixingEnergies[1] - segregationMixingEnergies[0]) / (segregationPoints[1] - segregationPoints[0]);
-					//output += X[1] * Math.Log(X[1]) / Program.size[1];
-					//output += Program.chi[0, 1] * X[0] * X[1];
-					//output += Program.chi[0, 2] * X[2] * X[1];
-					return output;
+					return segreagationF;
 				}
 			}
             return CalculateFloryMixingFreeEnergy(X);
@@ -269,7 +298,7 @@ namespace Polymer_brush
 				FindSegregationPointsBetweenSolventAndPolymerAtPresenceOfAdditive(0);
             else
             {
-				for (double Xadditive = 0; Xadditive < 0.1; Xadditive += 0.01)
+				for (double Xadditive = 0; Xadditive < 0.2; Xadditive += 0.01)
 				{
 					FindSegregationPointsBetweenSolventAndPolymerAtPresenceOfAdditive(Xadditive);
 				}
