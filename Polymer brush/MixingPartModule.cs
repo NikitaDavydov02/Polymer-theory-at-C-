@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.IO;
 
 namespace Polymer_brush
 {
@@ -34,8 +35,13 @@ namespace Polymer_brush
 		}*/
 		public double[] segregationPoints { get; private set; }
 		public double[] segregationMixingEnergies;
+
+		public List<KeyValuePair<double, double[]>> TernarySegregationPoints { get; private set; }
+		public List<KeyValuePair<double, double[]>> TernarySegregatioMixingEnergies { get; private set; }
 		public MixingPartModule()
 		{
+			TernarySegregationPoints = new List<KeyValuePair<double, double[]>>();
+			TernarySegregatioMixingEnergies = new List<KeyValuePair<double, double[]>>();
 			FindSegregationPointsBetweenSolventAndPolymer();
 		}
 		public double CalculateMixingFreeEnergy(double[] X, bool withSegregation = true)
@@ -193,9 +199,85 @@ namespace Polymer_brush
 			return XX;
 
 		}
+		private void FindSegregationPointsBetweenSolventAndPolymerAtPresenceOfAdditive(double Xadditive)
+        {
+			double[] initialComposition = new double[Program.NumberOfComponents];
+
+			initialComposition[1] = 0.7; //polymer
+			initialComposition[2] = Xadditive;
+			initialComposition[0] = 1 - initialComposition[1]- initialComposition[2];//solvent
+			/*for (int i = 2; i < Program.NumberOfComponents; i++)
+				initialComposition[i] = 0;*/
+
+			double Finit = CalculateMixingFreeEnergy(initialComposition,false);
+
+			double x1 = initialComposition[1];//polymer molar fraction
+			double x2 = initialComposition[1];
+			double dx = 0.0001;
+
+
+			double bestFmix = 10000000;
+			double[] best_x = new double[2];
+			double[] best_Fedge = new double[2];
+
+			while (x1 > 0)
+			{
+				x2 = initialComposition[1] + dx;
+
+				double[] leftComposition = new double[3];
+				leftComposition[0] = 1 -Xadditive- x1;
+				leftComposition[1] = x1;
+				leftComposition[2] = Xadditive;
+				double leftF = CalculateMixingFreeEnergy(leftComposition,false);
+
+				while (x2 < 1-Xadditive)
+				{
+					double[] rightComposition = new double[3];
+					rightComposition[0] = 1 - Xadditive - x2;
+					rightComposition[1] = x2;
+					rightComposition[2] = Xadditive;
+					double rightF = CalculateMixingFreeEnergy(rightComposition,false);
+					double Fsep = leftF + (initialComposition[1] - x1) * (rightF - leftF) / (x2 - x1);
+					double delta = Fsep - Finit;
+					if (delta < bestFmix)
+					{
+						bestFmix = delta;
+						best_x[0] = x1;
+						best_x[1] = x2;
+						best_Fedge[0] = leftF;
+						best_Fedge[1] = rightF;
+					}
+					x2 += dx;
+				}
+				x1 -= dx;
+			}
+
+			TernarySegregationPoints.Add(new KeyValuePair<double, double[]>(Xadditive,new double[2]{ best_x[0],best_x[1]}));
+			TernarySegregatioMixingEnergies.Add(new KeyValuePair<double, double[]>(Xadditive, new double[2] { best_Fedge[0], best_Fedge[1] }));
+			/*segregationPoints = new double[2];
+			segregationMixingEnergies = new double[2];
+
+			for (int i = 0; i < 2; i++)
+			{
+				segregationPoints[i] = best_x[i];
+				segregationMixingEnergies[i] = best_Fedge[i];
+			}*/
+		}
         private void FindSegregationPointsBetweenSolventAndPolymer()
         {
-            double[] initialComposition = new double[Program.NumberOfComponents];
+			if(Program.NumberOfComponents!=3)
+				FindSegregationPointsBetweenSolventAndPolymerAtPresenceOfAdditive(0);
+            else
+            {
+				for (double Xadditive = 0; Xadditive < 0.1; Xadditive += 0.01)
+				{
+					FindSegregationPointsBetweenSolventAndPolymerAtPresenceOfAdditive(Xadditive);
+				}
+			}
+			PrintSegregationPoints();
+			return;
+				
+           /* double[] initialComposition = new double[Program.NumberOfComponents];
 
             initialComposition[1] = 0.7; //polymer
             initialComposition[0] = 1 - initialComposition[1];//solvent
@@ -208,9 +290,6 @@ namespace Polymer_brush
             double x2 = initialComposition[1];
             double dx = 0.0001;
 
-            /*double[] X = new double[Program.NumberOfComponents];
-            for (int i = 0; i < Program.NumberOfComponents; i++)
-                X[i] = 0;*/
 
             double bestFmix = 10000000;
             double[] best_x = new double[2];
@@ -249,7 +328,6 @@ namespace Polymer_brush
                 }
                 x1 -= dx;
             }
-			//return best_x;
 			segregationPoints = new double[2];
 			segregationMixingEnergies = new double[2];
 
@@ -258,7 +336,23 @@ namespace Polymer_brush
                 segregationPoints[i] = best_x[i];
 				segregationMixingEnergies[i] = best_Fedge[i];
             }
-
+		   */
+        }
+		private void PrintSegregationPoints()
+        {
+			using (StreamWriter sw = new StreamWriter("segregation_points.txt"))
+			{
+				for(int i = 0; i < TernarySegregationPoints.Count; i++)
+                {
+					double x2 = TernarySegregationPoints[i].Key;
+					double x1_left = TernarySegregationPoints[i].Value[0];
+					double x1_right = TernarySegregationPoints[i].Value[1];
+					Vector3 leftComposition = new Vector3(1 - x1_left - x2, x1_left, x2);
+					Vector3 rightComposition = new Vector3(1 - x1_right - x2, x1_right, x2);
+					sw.WriteLine(leftComposition);
+					sw.WriteLine(rightComposition);
+				}
+			}
         }
     }
 }

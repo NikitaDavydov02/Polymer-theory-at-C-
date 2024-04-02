@@ -1008,6 +1008,10 @@ namespace Polymer_brush
             this.x2 = x2;
             this.x3 = x3;
         }
+        public override string ToString()
+        {
+            return x1 + ";" + x2 + ";" + x3 + ";";
+        }
     }
 
 }
