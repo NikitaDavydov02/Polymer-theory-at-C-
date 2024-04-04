@@ -161,7 +161,7 @@ namespace Polymer_brush
         static void Enter()
         {
             Console.WriteLine("Initializing...");
-            c = 0.0;
+            c = 2.0;
             pi = 3.1415926;
             coe = (3.0 / 8.0) * pi * pi;
             aA = 6.8 * Math.Pow(10, -9);
