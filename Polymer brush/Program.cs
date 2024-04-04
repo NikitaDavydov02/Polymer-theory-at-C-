@@ -54,10 +54,15 @@ namespace Polymer_brush
             double u_sol = 0;
             double u_pol = 0;
             double u_bio = 0;
+            calculationMode = CalculationMode.InfinitlyDelute;
             Enter();
-
             CalculateMixingSurface(0.005, false);
             CalculateMixingSurface(0.005,true);
+            if (calculationMode == CalculationMode.InfinitlyDelute)
+                SwitchToInfinitlyDeluteMode();
+
+            //////////////////////////////////////////////////////////////////
+            /////////////////////////////////////////////////////////////////////
             List<KeyValuePair<double, List<double>>> mixingEnergy = CalculateMixingEnergyProfile(1, 0, 20);
             using (StreamWriter sw = new StreamWriter("mixingFenergyOfSolventAndPolymer.txt"))
             {
@@ -66,11 +71,12 @@ namespace Polymer_brush
                     sw.WriteLine(pair.Key + "  ;  " + pair.Value[0] + ";" + pair.Value[1] + ";");
                 }
             }
-            //segregationPoints = FindSegregationPointsBetweenSolventAndPolymer();
+            //////////////////////////////////////////////////////////////////
+            /////////////////////////////////////////////////////////////////////
             //return;
             sw = new StreamWriter("profile.txt");
             integralLogWriter = new StreamWriter("integral_log_writer.txt");
-            sw.WriteLine("y_cur    solvent    polymer    bio    osm_pressure");
+            
 
             y_edge = BisectionSolve(y_min, y_max, yacc, NormalizationFunction, new List<double>());
             y_cur = y_min;
@@ -80,35 +86,61 @@ namespace Polymer_brush
            P_AB = NormalizationSubintegralValue(y_cur, new List<double>() { y_edge });
             //P_AB = FindSubintegralValueForNormalization(y_cur, y_edge); // !   Polymer concentration at A/ B boundary(highest)  must work before finding profile to set Lagr multipliers in common block
 
+            sw.WriteLine("y_cur    solvent    polymer    bio    osm_pressure");
 
+            List<KeyValuePair<double, List<double>>> profile = new List<KeyValuePair<double, List<double>>>();
+            Console.WriteLine("Calculating profile...");
             while (y_cur < y_edge)
             {
-                //y_cur += aA / R;
-                //!write(*, *) 'Phi poly subroutine is called'
                 Xbrush = new double[NumberOfComponents];
-                //Xbrush - everithing exept solvent
                 FindVolumeFractionsInTheBrushForPoint(out Xbrush, y_cur); //  !calculates concentration profile in the brush after the solution is found
-
+                
 
                 for (int i = 0; i < NumberOfComponents; i++)
                 {
                     fipolimer[i] = Xbrush[i];
                 }
-                /*fipolimer[1] = Xbrush[0];//biocomponent // ! local compsition of the brush at point y_cur(1)-solvent(2) - biocomponent(3) - polymer
-				fipolimer[2] = Xbrush[1];//polymer
-				fipolimer[0] = 1.0 - fipolimer[1] - fipolimer[2];//solvent*/
-
                 Console.Write("Fmix=" + Fmix);
                 Console.Write("u_sol=" + u_sol);
                 Console.Write("u_pol=" + u_pol);
                 Console.Write("u_bio=" + u_bio);
                 Console.Write("/n");
 
-                string line = y_cur.ToString() + "    ";
+                /*string line = y_cur.ToString() + "    ";
                 for (int i = 0; i < NumberOfComponents; i++)
                     line += fipolimer[i] + "    ";
-                sw.WriteLine(line + (Osmmix(Program.NumberOfComponents, fipolimer) - osmbulk));
+                sw.WriteLine(line + (Osmmix(Program.NumberOfComponents, fipolimer) - osmbulk));*/
+                List<double> composition = new List<double>();
+                for (int i = 0; i < NumberOfComponents; i++)
+                    composition.Add(fipolimer[i]);
+                profile.Add(new KeyValuePair<double, List<double>>(y_cur, composition));
                 y_cur += aA / R;
+            }
+            y_cur = y_min;
+            if (calculationMode == CalculationMode.InfinitlyDelute)
+            {
+                Enter();
+                Console.WriteLine("*************************");
+                Console.WriteLine("*************************");
+                Console.WriteLine("Finding additive concentration in infinitly delute solution approximation...");
+                for (int i = 0; i < profile.Count; i++)
+                {
+                    y_cur = profile[i].Key;
+                    double[] baseFractions = new double[2];
+                    baseFractions[0] = profile[i].Value[0];
+                    baseFractions[1] = profile[i].Value[1];
+                    double additiveFraction = FindAdditiveConcentrationForParticularPolymerAndSolventContentInTheBrush(baseFractions);
+                    profile[i].Value.Add(additiveFraction);
+                }
+            }
+            Console.WriteLine("");
+            Console.WriteLine("Output");
+            for(int i=0;i<profile.Count;i++)
+            {
+                string line = profile[i].Key.ToString() + "    ";
+                for (int j = 0; j < profile[i].Value.Count; j++)
+                    line += profile[i].Value[j] + "    ";
+                sw.WriteLine(line + (Osmmix(Program.NumberOfComponents, fipolimer) - osmbulk)); 
             }
 
             Console.WriteLine("Beta: " + y_edge);
@@ -128,8 +160,8 @@ namespace Polymer_brush
         }
         static void Enter()
         {
-            calculationMode = CalculationMode.Usual;
-            c = 2.0;
+            Console.WriteLine("Initializing...");
+            c = 0.0;
             pi = 3.1415926;
             coe = (3.0 / 8.0) * pi * pi;
             aA = 6.8 * Math.Pow(10, -9);
@@ -154,9 +186,12 @@ namespace Polymer_brush
             //!areaPerChain_MAX = 3.0d0 * aA * *2 * (3.1415926 * 4.0 * rNB * *2 / 3.0d0) **(1.0 / 3.0)
             //				 !write(*, *) BA,R,rNB* aA, areaPerChain,10.0 * (nu + 1.1) * aA * *2,y_max,BA * (R * (y_max - 1.0)) * *2,
             //!stop
-            NumberOfComponents = 2;
+            NumberOfComponents = 3;
             NumberOfPolymerGroupTypes = 1;
 
+            chemPotInTheBulk = new double[NumberOfComponents];
+            chemPotAtTheBorder = new double[NumberOfComponents];
+            fipolimer = new double[NumberOfComponents];
 
             size = new double[MaxNumberOfComponent];
             for (int i = 0; i < NumberOfComponents; i++)
@@ -212,26 +247,35 @@ namespace Polymer_brush
             volumeFractionsInTheBulk = new double[NumberOfComponents];
             for (int i = 0; i < NumberOfComponents; i++)
                 volumeFractionsInTheBulk[i] = 0.0;
-            //volumeFractionsInTheBulk[2] = 0.02;//bio
-           // volumeFractionsInTheBulk[0] = 0.98;//solvent
-            volumeFractionsInTheBulk[0] = 1.0;
+            volumeFractionsInTheBulk[2] = 0.02;//bio
+            volumeFractionsInTheBulk[0] = 0.98;//solvent
+            //volumeFractionsInTheBulk[0] = 1.0;
 
             ////////////////////////////////////////////////////////////
             /////////////////////////////////////////////////////////////
             ////////////////////////////////////////////////////////////
             /////////////////////////////////////////////////////////////
 
-            chemPotInTheBulk = new double[NumberOfComponents];
-            chemPotAtTheBorder = new double[NumberOfComponents];
-            fipolimer = new double[NumberOfComponents];
+            
             //Lagrmix(2, volumeFractionsInTheBulk, out Lagrbulk);
 
             mixingPartModule = new MixingPartModule();
+
             Lagrmix(NumberOfComponents, volumeFractionsInTheBulk, out chemPotInTheBulk);
             //chemPotInTheBulk[1] = Lagrbulk[1];//this is for biocomponent
-            osmbulk = Osmmix(NumberOfComponents - 1, volumeFractionsInTheBulk);// !  this is for solvent
+            //osmbulk = Osmmix(NumberOfComponents - 1, volumeFractionsInTheBulk);// !  this is for solvent
 
 
+        }
+        static void SwitchToInfinitlyDeluteMode()
+        {
+            Console.WriteLine("Switching to infinitly delute mode");
+            NumberOfComponents = 2;
+            volumeFractionsInTheBulk = new double[2];
+            volumeFractionsInTheBulk[1] = 0;
+            volumeFractionsInTheBulk[0] = 1;
+            mixingPartModule = new MixingPartModule();
+            Lagrmix(NumberOfComponents, volumeFractionsInTheBulk, out chemPotInTheBulk);
         }
         static void Lagrmix(int numberOfComponents, double[] X, out double[] mixingPartOfExchangeChemicalPotentials)
         {
@@ -816,6 +860,7 @@ namespace Polymer_brush
         }
         static void CalculateMixingSurface(double step, bool linearized)
         {
+            Console.WriteLine("Calculating surface");
            // List<KeyValuePair<Vector3, double>> output = new List<KeyValuePair<Vector3, double>>();
             if (NumberOfComponents != 3)
                 return;
@@ -829,10 +874,10 @@ namespace Polymer_brush
             using(StreamWriter surfaceWriter = new StreamWriter(fileName))
             {
                 surfaceWriter.WriteLine("Solvent;Polymer;Bio;F;");
-                for (double x1 = step; x1 < 1; x1+=step)
+                for (double x1 = 0; x1 <= 1; x1+=step)
                 {
                     fractions[0] = x1;
-                    for (double x2 = step; x2 < 1; x2 += step)
+                    for (double x2 = 0; x2 <= 1; x2 += step)
                     {
                         x3 = 1 - x1 - x2;
                         if (x3 <= 0)
@@ -877,6 +922,47 @@ namespace Polymer_brush
             }
 
             return output;
+        }
+       // static double[] chemPotAtTheBaseBrush;
+        static double[] compositionAtTheBaseBrush;
+        static double FindAdditiveConcentrationForParticularPolymerAndSolventContentInTheBrush(double[] SolventAndPolymerFractions)
+        {
+            Console.WriteLine("Finding Additive Concentration...");
+            compositionAtTheBaseBrush = new double[3];
+            compositionAtTheBaseBrush[0] = SolventAndPolymerFractions[0];
+            compositionAtTheBaseBrush[1] = SolventAndPolymerFractions[1];
+            compositionAtTheBaseBrush[2] =0;
+            
+            //Lagrmix_PolA(NumberOfComponents, compositionAtTheBaseBrush, out chemPotAtTheBaseBrush);
+
+            double ERREL = Math.Pow(10, -2) * volumeFractionsInTheBulk[2];
+            int ITMAX = 600;
+            double[] tryAdditive = new double[] { volumeFractionsInTheBulk[2] };
+            double[] additiveConcentrations;
+            double FNORM;
+            DNEQNF(InfinitlyDeluteAdditivesEquations, ERREL, 1, ITMAX, tryAdditive, out additiveConcentrations, out FNORM);
+
+            return additiveConcentrations[0];
+        }
+        static string InfinitlyDeluteAdditivesEquations(double[] X, out double[] F, int L)
+        {
+            Console.WriteLine("Infinitly delute additive equation");
+            //X - only additives
+            string logString = "";
+            double nu = 2;
+            double y_cur = point_y;
+
+            double[] tryComposition = new double[NumberOfComponents];
+            tryComposition[0] = (1 - X[0]) * compositionAtTheBaseBrush[0];
+            tryComposition[1] = (1 - X[0]) * compositionAtTheBaseBrush[1];
+            tryComposition[2] = X[0];
+            //!Calculate values that in ideal case must be equal to Lagrangian multipliers based on current concentrations
+            double[] chemPotInTheComplementaryBrush;
+            Lagrmix_PolA(NumberOfComponents, tryComposition, out chemPotInTheComplementaryBrush);
+            F = new double[L];
+            for (int i = 0; i < L; i++)
+                F[i] = (chemPotInTheComplementaryBrush[i + 2] - chemPotInTheBulk[i + 2]);
+            return logString;
         }
        /* static double[] FindSegregationPointsBetweenSolventAndPolymer()
         {
