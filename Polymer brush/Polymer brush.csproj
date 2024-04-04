@@ -48,6 +48,7 @@
     <Compile Include="Input.cs" />
     <Compile Include="Matrix.cs" />
     <Compile Include="MixingPartModule.cs" />
+    <Compile Include="Node.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

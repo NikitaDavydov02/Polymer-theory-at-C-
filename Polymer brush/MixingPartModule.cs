@@ -9,75 +9,94 @@ namespace Polymer_brush
 {
     class MixingPartModule
     {
-		/*public double CalculateDerivativesOfMixingFreeEnergyWithRespectToVolumeFractions(double[] X, int componentIndex)
-        {
-			double f = CalculateMixingFreeEnergy(X);
-			//double f = CalculateGugenheimMixingFreeEnergy(X);
-			double x = X[componentIndex];
-			double max_dx = 1 - x;
-			if (X[0] < max_dx)
-				max_dx = X[0];
-			double dx = 0.01 * x;
-			if (dx == 0)
-				dx = 0.01;
-			if (dx > max_dx)
-				dx = max_dx;
+		//public double[] segregationPoints { get; private set; }
+		//public double[] segregationMixingEnergies;
 
-			double oldSolventVolumeFraction = X[0];
-			double x_dx = x + dx;
-			X[componentIndex] = x_dx;
-			X[0] -= dx;
-			double f_df = CalculateMixingFreeEnergy(X);
-			//double f_df = CalculateGugenheimMixingFreeEnergy(X);
-			X[0] = oldSolventVolumeFraction;
-			X[componentIndex] = x;
-			return (f_df - f) / dx;
-		}*/
-		public double[] segregationPoints { get; private set; }
-		public double[] segregationMixingEnergies;
-
-		public List<KeyValuePair<double, double[]>> TernarySegregationPoints { get; private set; }
-		public List<KeyValuePair<double, double[]>> TernarySegregatioMixingEnergies { get; private set; }
+		//public List<KeyValuePair<double, double[]>> TernarySegregationPoints { get; private set; }
+		//public List<KeyValuePair<double, double[]>> TernarySegregatioMixingEnergies { get; private set; }
+		public List<Node> Nodes { get; private set; }
 		public MixingPartModule()
 		{
-			TernarySegregationPoints = new List<KeyValuePair<double, double[]>>();
-			TernarySegregatioMixingEnergies = new List<KeyValuePair<double, double[]>>();
+			//TernarySegregationPoints = new List<KeyValuePair<double, double[]>>();
+			//TernarySegregatioMixingEnergies = new List<KeyValuePair<double, double[]>>();
+			Nodes = new List<Node>();
 			FindSegregationPointsBetweenSolventAndPolymer();
 		}
+		public bool IsCompositionInsideSegregationZone(double[] X)
+		{
+			double minPossibleF;
+			double[] firstSegregatonPoint;
+			double[] secondSegregatonPoint;
+			return IsCompositionInsideSegregationZone(X, out minPossibleF, out firstSegregatonPoint, out secondSegregatonPoint);
+		}
 		public bool IsCompositionInsideSegregationZone(double[] X, out double minPossibleF)
+		{
+			double[] firstSegregatonPoint;
+			double[] secondSegregatonPoint;
+			return IsCompositionInsideSegregationZone(X, out minPossibleF, out firstSegregatonPoint, out secondSegregatonPoint);
+		}
+		public bool IsCompositionInsideSegregationZone(double[] X, out double minPossibleF, out double[]firstSegregatonPoint, out double[] secondSegregatonPoint)
         {
+			
 			minPossibleF = 0;
-			double Xadditive;
-			if (X.Length > 2)
-				Xadditive = X[2];
-			else
-				Xadditive = 0;
-			for(int i = 0; i < TernarySegregationPoints.Count - 1; i++)
+			firstSegregatonPoint = new double[Program.NumberOfComponents];
+			secondSegregatonPoint = new double[Program.NumberOfComponents];
+			if (Nodes.Count == 0)
+				return false;
+			for (int i = 0; i < Program.NumberOfComponents; i++)
             {
-				if(TernarySegregationPoints[i].Key<=Xadditive &&TernarySegregationPoints[i+1].Key > Xadditive)
-                {
-					//Aproximation between crossections
-					double Xadditive_min = TernarySegregationPoints[i].Key;
-					double Xadditive_max = TernarySegregationPoints[i+1].Key;
-					double x1_left_min = TernarySegregationPoints[i].Value[0];
-					double x1_left_max = TernarySegregationPoints[i+1].Value[0];
-					double x1_right_min = TernarySegregationPoints[i].Value[1];
-					double x1_right_max = TernarySegregationPoints[i + 1].Value[1];
-					/////////////
-					double x1_left = x1_left_min+ (Xadditive - Xadditive_min) * (x1_left_max - x1_left_min) / (Xadditive_max - Xadditive_min);
-					double x1_right = x1_right_min + (Xadditive - Xadditive_min) * (x1_right_max - x1_right_min) / (Xadditive_max - Xadditive_min);
-					if (X[1] >= x1_left && X[1] < x1_right)
-                    {
-						double[] leftComposition = new double[3] { 1 - x1_left - Xadditive, x1_left, Xadditive };
-						double[] rightComposition = new double[3] { 1 - x1_right - Xadditive, x1_right, Xadditive };
-						double leftF = CalculateMixingFreeEnergy(leftComposition, false);
-						double rightF = CalculateMixingFreeEnergy(rightComposition, false);
-						minPossibleF = leftF + (X[1] - x1_left) * (rightF - leftF) / (x1_right - x1_left);
-						return true;
+				secondSegregatonPoint[i] = -1;
+				firstSegregatonPoint[i] = -1;
+			}
+			double Xadditive;
+			if (Program.NumberOfComponents > 2)
+            {
+				Xadditive = X[2];
+				for (int i = 0; i < Nodes.Count - 1; i++)
+				{
+					if (Nodes[i].firstComposition[2] <= Xadditive && Nodes[i+1].firstComposition[2] > Xadditive)
+					{
+						//Aproximation between crossections
+						double Xadditive_min = Nodes[i].firstComposition[2];
+						double Xadditive_max = Nodes[i+1].firstComposition[2];
+						double x1_left_min = Nodes[i].firstComposition[1];
+						double x1_left_max = Nodes[i+1].firstComposition[1];
+						double x1_right_min = Nodes[i].secondComposition[1];
+						double x1_right_max = Nodes[i+1].secondComposition[1];
+						/////////////
+						double x1_left = x1_left_min + (Xadditive - Xadditive_min) * (x1_left_max - x1_left_min) / (Xadditive_max - Xadditive_min);
+						double x1_right = x1_right_min + (Xadditive - Xadditive_min) * (x1_right_max - x1_right_min) / (Xadditive_max - Xadditive_min);
+						if (X[1] >= x1_left && X[1] < x1_right)
+						{
+							double[] leftComposition = new double[3] { 1 - x1_left - Xadditive, x1_left, Xadditive };
+							double[] rightComposition = new double[3] { 1 - x1_right - Xadditive, x1_right, Xadditive };
+							double leftF = CalculateMixingFreeEnergy(leftComposition, false);
+							double rightF = CalculateMixingFreeEnergy(rightComposition, false);
+							minPossibleF = leftF + (X[1] - x1_left) * (rightF - leftF) / (x1_right - x1_left);
+							firstSegregatonPoint = leftComposition;
+							secondSegregatonPoint = rightComposition;
+							return true;
+						}
+						return false;
 					}
-					return false;
 				}
 			}
+            else
+            {
+				Xadditive = 0;
+				if (X[1] >= Nodes[0].firstComposition[1] && X[0] <= Nodes[0].secondComposition[1])
+                {
+					double[] leftComposition = Nodes[0].firstComposition;
+					double[] rightComposition = Nodes[0].secondComposition;
+					double leftF = CalculateMixingFreeEnergy(leftComposition, false);
+					double rightF = CalculateMixingFreeEnergy(rightComposition, false);
+					minPossibleF = leftF + (X[1] - Nodes[0].firstComposition[1]) * (rightF - leftF) / (Nodes[0].secondComposition[1] - Nodes[0].firstComposition[1]);
+					firstSegregatonPoint = leftComposition;
+					secondSegregatonPoint = rightComposition;
+					return true;
+                }
+			}
+			
 			return false;
         }
 		public double CalculateMixingFreeEnergy(double[] X, bool withSegregation = true)
@@ -86,10 +105,7 @@ namespace Polymer_brush
             {
 				double segreagationF;
 				if (IsCompositionInsideSegregationZone(X, out segreagationF))
-				{
-
 					return segreagationF;
-				}
 			}
             return CalculateFloryMixingFreeEnergy(X);
             return CalculateGugenheimMixingFreeEnergy(X);
@@ -153,18 +169,6 @@ namespace Polymer_brush
 			double output = translationSum + mixingSum;
 			return output;
 		}
-		/*private double CalculateExchangeChemialPotentialOfComponentAnaliticaly(double[] X, int componenIndex)
-		{
-			if (componenIndex == 0 || componenIndex == 1)
-				return 0;
-			double output = 0;
-			output += (Math.Log(X[2]) + 1) / Program.size[2];
-            output -= (Math.Log(X[0]) + 1) / Program.size[0];
-			output += Program.chi[0, 2] * X[0];
-			output -= Program.chi[0, 2] * X[2];
-			return output;
-        }
-		*/
         public double CalculateExchangeChemialPotentialOfComponent(double[] X, int componenIndex)
 		{
 			double relativeDelta = Math.Pow(10, -2);
@@ -234,13 +238,12 @@ namespace Polymer_brush
 		}
 		private void FindSegregationPointsBetweenSolventAndPolymerAtPresenceOfAdditive(double Xadditive)
         {
-			double[] initialComposition = new double[3];
+			double[] initialComposition = new double[Program.NumberOfComponents];
 
 			initialComposition[1] = 0.7; //polymer
-			initialComposition[2] = Xadditive;
-			initialComposition[0] = 1 - initialComposition[1]- initialComposition[2];//solvent
-			/*for (int i = 2; i < Program.NumberOfComponents; i++)
-				initialComposition[i] = 0;*/
+			if(Program.NumberOfComponents>2)
+				initialComposition[2] = Xadditive;
+			initialComposition[0] = 1 - initialComposition[1]- Xadditive;//solvent
 
 			double Finit = CalculateMixingFreeEnergy(initialComposition,false);
 
@@ -250,33 +253,36 @@ namespace Polymer_brush
 
 
 			double bestFmix = 10000000;
-			double[] best_x = new double[2];
+			double[] bestFirstComposition = new double[Program.NumberOfComponents];
+			double[] bestSecondComposition = new double[Program.NumberOfComponents];
 			double[] best_Fedge = new double[2];
 
 			while (x1 > 0)
 			{
 				x2 = initialComposition[1] + dx;
 
-				double[] leftComposition = new double[3];
+				double[] leftComposition = new double[Program.NumberOfComponents];
 				leftComposition[0] = 1 -Xadditive- x1;
 				leftComposition[1] = x1;
-				leftComposition[2] = Xadditive;
+				if(Program.NumberOfComponents>2)
+					leftComposition[2] = Xadditive;
 				double leftF = CalculateMixingFreeEnergy(leftComposition,false);
 
 				while (x2 < 1-Xadditive)
 				{
-					double[] rightComposition = new double[3];
+					double[] rightComposition = new double[Program.NumberOfComponents];
 					rightComposition[0] = 1 - Xadditive - x2;
 					rightComposition[1] = x2;
-					rightComposition[2] = Xadditive;
+					if(Program.NumberOfComponents>2)
+						rightComposition[2] = Xadditive;
 					double rightF = CalculateMixingFreeEnergy(rightComposition,false);
 					double Fsep = leftF + (initialComposition[1] - x1) * (rightF - leftF) / (x2 - x1);
 					double delta = Fsep - Finit;
 					if (delta < bestFmix)
 					{
 						bestFmix = delta;
-						best_x[0] = x1;
-						best_x[1] = x2;
+						bestFirstComposition = leftComposition;
+						bestSecondComposition = rightComposition;
 						best_Fedge[0] = leftF;
 						best_Fedge[1] = rightF;
 					}
@@ -284,9 +290,13 @@ namespace Polymer_brush
 				}
 				x1 -= dx;
 			}
-
-			TernarySegregationPoints.Add(new KeyValuePair<double, double[]>(Xadditive,new double[2]{ best_x[0],best_x[1]}));
-			TernarySegregatioMixingEnergies.Add(new KeyValuePair<double, double[]>(Xadditive, new double[2] { best_Fedge[0], best_Fedge[1] }));
+            if (DistanceBetweenCompositions(bestFirstComposition, bestSecondComposition) < 0.01)
+				return;
+			Node node = new Node(bestFirstComposition, bestSecondComposition, best_Fedge[0], best_Fedge[1]);
+			Nodes.Add(node);
+			//TernarySegregationPoints.Add(new KeyValuePair<double, double[]>(Xadditive,new double[2]{ best_x[0],best_x[1]}));
+			//TernarySegregatioMixingEnergies.Add(new KeyValuePair<double, double[]>(Xadditive, new double[2] { best_Fedge[0], best_Fedge[1] }));
+			
 			/*segregationPoints = new double[2];
 			segregationMixingEnergies = new double[2];
 
@@ -296,9 +306,16 @@ namespace Polymer_brush
 				segregationMixingEnergies[i] = best_Fedge[i];
 			}*/
 		}
+		private double DistanceBetweenCompositions(double[]A, double[] B)
+        {
+			double output = 0;
+			for (int i = 0; i < A.Length; i++)
+				output += (A[i] - B[i]) * (A[i] - B[i]);
+			return output;
+		}
         private void FindSegregationPointsBetweenSolventAndPolymer()
         {
-			if(Program.NumberOfComponents!=3)
+			if(Program.NumberOfComponents==2)
 				FindSegregationPointsBetweenSolventAndPolymerAtPresenceOfAdditive(0);
             else
             {
@@ -375,15 +392,18 @@ namespace Polymer_brush
         {
 			using (StreamWriter sw = new StreamWriter("segregation_points.txt"))
 			{
-				for(int i = 0; i < TernarySegregationPoints.Count; i++)
+				for(int i = 0; i < Nodes.Count; i++)
                 {
-					double x2 = TernarySegregationPoints[i].Key;
-					double x1_left = TernarySegregationPoints[i].Value[0];
-					double x1_right = TernarySegregationPoints[i].Value[1];
-					Vector3 leftComposition = new Vector3(1 - x1_left - x2, x1_left, x2);
-					Vector3 rightComposition = new Vector3(1 - x1_right - x2, x1_right, x2);
-					sw.WriteLine(leftComposition);
-					sw.WriteLine(rightComposition);
+					string first = "";
+					string second = "";
+					for(int j = 0; j < Nodes[i].firstComposition.Length; j++)
+                    {
+						first += Nodes[i].firstComposition[j] + ";";
+						second += Nodes[i].secondComposition[j] + ";";
+					}
+
+					sw.WriteLine(first);
+					sw.WriteLine(second);
 				}
 			}
         }

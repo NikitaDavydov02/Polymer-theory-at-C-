@@ -155,7 +155,7 @@ namespace Polymer_brush
             //!areaPerChain_MAX = 3.0d0 * aA * *2 * (3.1415926 * 4.0 * rNB * *2 / 3.0d0) **(1.0 / 3.0)
             //				 !write(*, *) BA,R,rNB* aA, areaPerChain,10.0 * (nu + 1.1) * aA * *2,y_max,BA * (R * (y_max - 1.0)) * *2,
             //!stop
-            NumberOfComponents = 2;
+            NumberOfComponents = 3;
             NumberOfPolymerGroupTypes = 1;
 
 
@@ -205,13 +205,22 @@ namespace Polymer_brush
                     etas[i, j] = Math.Exp(-3 * chi[i, j] / z);
 
             //!give bulk composition and calculate Lagr.multipliers and osm pressure in the bulk:
+            ////////////////////////////////////////////////////////////
+            /////////////////////////////////////////////////////////////
+            ////////////////////////////////////////////////////////////
+            /////////////////////////////////////////////////////////////
+            
             volumeFractionsInTheBulk = new double[NumberOfComponents];
             for (int i = 0; i < NumberOfComponents; i++)
                 volumeFractionsInTheBulk[i] = 0.0;
-            //volumeFractionsInTheBulk[2] = 0.02;//bio
+            volumeFractionsInTheBulk[2] = 0.02;//bio
             volumeFractionsInTheBulk[0] = 0.98;//solvent
+            //volumeFractionsInTheBulk[0] = 1.0;
 
-            volumeFractionsInTheBulk[0] = 1.0;
+            ////////////////////////////////////////////////////////////
+            /////////////////////////////////////////////////////////////
+            ////////////////////////////////////////////////////////////
+            /////////////////////////////////////////////////////////////
 
             chemPotInTheBulk = new double[NumberOfComponents];
             chemPotAtTheBorder = new double[NumberOfComponents];
@@ -223,11 +232,6 @@ namespace Polymer_brush
             //chemPotInTheBulk[1] = Lagrbulk[1];//this is for biocomponent
             osmbulk = Osmmix(NumberOfComponents - 1, volumeFractionsInTheBulk);// !  this is for solvent
 
-            //chemPotInTheBulk[0] = Lagrbulk[0]; //!  this should be identiacally zero
-            //! now calculate  mixing part of Lagrange multiplier at the edge of the brush, where  FiA = 0:
-            //volumeFractionsInTheBulk[2] = 0.0;
-            //Lagrmix_PolA(3, volumeFractionsInTheBulk, out Lagrbulk);// ! NOTE  that  Lagr multipliers are spoiled in  Lagrbulk   but stored in common
-            //chemPotInTheBulk[2] = Lagrbulk[2];
 
         }
         static void Lagrmix(int numberOfComponents, double[] X, out double[] mixingPartOfExchangeChemicalPotentials)
@@ -640,16 +644,18 @@ namespace Polymer_brush
                     sum += X[i];
                 }
                 realComposition[0] = 1 - sum;
-                double a;
-                if (mixingPartModule.IsCompositionInsideSegregationZone(realComposition, out a))
+                double segregationDelta;
+                double[] firstSegregationPoint;
+                double[] secondSegregationPoint;
+                if (mixingPartModule.IsCompositionInsideSegregationZone(realComposition, out segregationDelta, out firstSegregationPoint, out secondSegregationPoint))
                 {
                     if (NumberOfComponents != 2)
-                        throw new Exception();
+                        throw new NotImplementedException();
                     //Split
                     if (deltaX[0] > 0)
-                        X[0] = mixingPartModule.segregationPoints[1] + 0.01;
+                        X[0] = secondSegregationPoint[1] + 0.01;
                     if (deltaX[0] < 0)
-                        X[0] = mixingPartModule.segregationPoints[0] - 0.1;
+                        X[0] = firstSegregationPoint[1] - 0.1;
                     splitTransitions++;
                 }
                 /*if(X[0]>=mixingPartModule.segregationPoints[0]&& X[0]<= mixingPartModule.segregationPoints[1])
@@ -672,7 +678,9 @@ namespace Polymer_brush
                         //Split
                         newthonWriter.WriteLine("Split");
                         newthonWriter.Close();
-                        X[0] = mixingPartModule.segregationPoints[0];
+                        if (NumberOfComponents != 2)
+                            throw new NotImplementedException();
+                        X[0] = firstSegregationPoint[1];
 
                         return;
                     }
