@@ -84,7 +84,7 @@ namespace Polymer_brush
             else
             {
 				Xadditive = 0;
-				if (X[1] >= Nodes[0].firstComposition[1] && X[0] <= Nodes[0].secondComposition[1])
+				if (X[1] >= Nodes[0].firstComposition[1] && X[1] <= Nodes[0].secondComposition[1])
                 {
 					double[] leftComposition = Nodes[0].firstComposition;
 					double[] rightComposition = Nodes[0].secondComposition;

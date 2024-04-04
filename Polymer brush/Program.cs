@@ -58,7 +58,6 @@ namespace Polymer_brush
 
             CalculateMixingSurface(0.005, false);
             CalculateMixingSurface(0.005,true);
-            return;
             List<KeyValuePair<double, List<double>>> mixingEnergy = CalculateMixingEnergyProfile(1, 0, 20);
             using (StreamWriter sw = new StreamWriter("mixingFenergyOfSolventAndPolymer.txt"))
             {
@@ -155,7 +154,7 @@ namespace Polymer_brush
             //!areaPerChain_MAX = 3.0d0 * aA * *2 * (3.1415926 * 4.0 * rNB * *2 / 3.0d0) **(1.0 / 3.0)
             //				 !write(*, *) BA,R,rNB* aA, areaPerChain,10.0 * (nu + 1.1) * aA * *2,y_max,BA * (R * (y_max - 1.0)) * *2,
             //!stop
-            NumberOfComponents = 3;
+            NumberOfComponents = 2;
             NumberOfPolymerGroupTypes = 1;
 
 
@@ -213,9 +212,9 @@ namespace Polymer_brush
             volumeFractionsInTheBulk = new double[NumberOfComponents];
             for (int i = 0; i < NumberOfComponents; i++)
                 volumeFractionsInTheBulk[i] = 0.0;
-            volumeFractionsInTheBulk[2] = 0.02;//bio
-            volumeFractionsInTheBulk[0] = 0.98;//solvent
-            //volumeFractionsInTheBulk[0] = 1.0;
+            //volumeFractionsInTheBulk[2] = 0.02;//bio
+           // volumeFractionsInTheBulk[0] = 0.98;//solvent
+            volumeFractionsInTheBulk[0] = 1.0;
 
             ////////////////////////////////////////////////////////////
             /////////////////////////////////////////////////////////////
