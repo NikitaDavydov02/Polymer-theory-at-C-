@@ -37,6 +37,7 @@ namespace Polymer_brush
         //static double[] chemPotInTheBulk;
         static double[] chemPotAtTheBorder;
         static MixingPartModule mixingPartModule;
+        static MixingPartModule mixingPartModuleCopy=null;
         static CalculationMode calculationMode;
         static void Main(string[] args)
         {
@@ -213,9 +214,9 @@ namespace Polymer_brush
             fractionsOfGroups[0] = 1;
             //fractionsOfGroups[1] = 0;
 
-            chi[0, 1] = 0.5;//solv-pol
-            chi[0, 2] = 0;//solv-bio
-            chi[1, 2] = 0.3;//pol-bio
+            chi[0, 1] = 1.0;//solv-pol
+            chi[0, 2] = 1;//solv-bio
+            chi[1, 2] = -1;//pol-bio
             /*//Solvent with other
             chi[0, 3] = -1;//! solv - bio
             chi[0, 1] = 0;//! solv - polym first group
@@ -249,17 +250,19 @@ namespace Polymer_brush
                 volumeFractionsInTheBulk[i] = 0.0;
             volumeFractionsInTheBulk[2] = 0.02;//bio
             volumeFractionsInTheBulk[0] = 0.98;//solvent
-            //volumeFractionsInTheBulk[0] = 1.0;
+                                               //volumeFractionsInTheBulk[0] = 1.0;
 
             ////////////////////////////////////////////////////////////
             /////////////////////////////////////////////////////////////
             ////////////////////////////////////////////////////////////
             /////////////////////////////////////////////////////////////
 
-            
+
             //Lagrmix(2, volumeFractionsInTheBulk, out Lagrbulk);
-
-            mixingPartModule = new MixingPartModule();
+            if (mixingPartModuleCopy == null)
+                mixingPartModule = new MixingPartModule();
+            else
+                mixingPartModule = mixingPartModuleCopy;
 
             Lagrmix(NumberOfComponents, volumeFractionsInTheBulk, out chemPotInTheBulk);
             //chemPotInTheBulk[1] = Lagrbulk[1];//this is for biocomponent
@@ -274,6 +277,7 @@ namespace Polymer_brush
             volumeFractionsInTheBulk = new double[2];
             volumeFractionsInTheBulk[1] = 0;
             volumeFractionsInTheBulk[0] = 1;
+            mixingPartModuleCopy = mixingPartModule;
             mixingPartModule = new MixingPartModule();
             Lagrmix(NumberOfComponents, volumeFractionsInTheBulk, out chemPotInTheBulk);
         }
