@@ -37,6 +37,7 @@ namespace Polymer_brush
         //static double[] chemPotInTheBulk;
         static double[] chemPotAtTheBorder;
         static MixingPartModule mixingPartModule;
+        static CalculationMode calculationMode;
         static void Main(string[] args)
         {
             /*double[] guess = new double[2];
@@ -128,6 +129,7 @@ namespace Polymer_brush
         }
         static void Enter()
         {
+            calculationMode = CalculationMode.Usual;
             c = 2.0;
             pi = 3.1415926;
             coe = (3.0 / 8.0) * pi * pi;
@@ -153,7 +155,7 @@ namespace Polymer_brush
             //!areaPerChain_MAX = 3.0d0 * aA * *2 * (3.1415926 * 4.0 * rNB * *2 / 3.0d0) **(1.0 / 3.0)
             //				 !write(*, *) BA,R,rNB* aA, areaPerChain,10.0 * (nu + 1.1) * aA * *2,y_max,BA * (R * (y_max - 1.0)) * *2,
             //!stop
-            NumberOfComponents = 3;
+            NumberOfComponents = 2;
             NumberOfPolymerGroupTypes = 1;
 
 
@@ -206,9 +208,10 @@ namespace Polymer_brush
             volumeFractionsInTheBulk = new double[NumberOfComponents];
             for (int i = 0; i < NumberOfComponents; i++)
                 volumeFractionsInTheBulk[i] = 0.0;
-            volumeFractionsInTheBulk[2] = 0.02;//bio
+            //volumeFractionsInTheBulk[2] = 0.02;//bio
             volumeFractionsInTheBulk[0] = 0.98;//solvent
-            //volumeFractionsInTheBulk[0] = 1.0;
+
+            volumeFractionsInTheBulk[0] = 1.0;
 
             chemPotInTheBulk = new double[NumberOfComponents];
             chemPotAtTheBorder = new double[NumberOfComponents];
@@ -499,39 +502,39 @@ namespace Polymer_brush
         }
         delegate string NonlinearSystem(double[] X, out double[] F, int L);
 
-       /* static double[,] CalculateJacobian(NonlinearSystem Func,double[] _X)
-        {
-            double[] X = new double[_X.Length];
-            for (int i = 0; i < X.Length; i++)
-                X[i] = _X[i];
-            double[] F = new double[X.Length];
-            double[,] J = new double[X.Length, X.Length];
-            
-            for (int i = 0; i < X.Length; i++)
-                for (int j = 0; j < X.Length; j++)
-                {
-                    Func(X, out F, X.Length);
-                    double f_init = F[i];
-                    double old_x = X[j];
-                    double dx = old_x * 0.01;
-                    X[j] += dx;
+        /* static double[,] CalculateJacobian(NonlinearSystem Func,double[] _X)
+         {
+             double[] X = new double[_X.Length];
+             for (int i = 0; i < X.Length; i++)
+                 X[i] = _X[i];
+             double[] F = new double[X.Length];
+             double[,] J = new double[X.Length, X.Length];
+
+             for (int i = 0; i < X.Length; i++)
+                 for (int j = 0; j < X.Length; j++)
+                 {
+                     Func(X, out F, X.Length);
+                     double f_init = F[i];
+                     double old_x = X[j];
+                     double dx = old_x * 0.01;
+                     X[j] += dx;
 
 
-                    for (double devisionStepDegree = 1; X[j] >= 1; devisionStepDegree++)
-                    {
-                        dx /= 2;
-                        X[j] = dx + old_x;
-                    }
-                    
+                     for (double devisionStepDegree = 1; X[j] >= 1; devisionStepDegree++)
+                     {
+                         dx /= 2;
+                         X[j] = dx + old_x;
+                     }
 
-                    Func(X, out F, X.Length);
-                    double f_df = F[i];
-                    J[i, j] = (f_df - f_init) / dx;
-                    X[j] = old_x;
-                    Func(X, out F, X.Length);
-                }
-            return J;
-        }*/
+
+                     Func(X, out F, X.Length);
+                     double f_df = F[i];
+                     J[i, j] = (f_df - f_init) / dx;
+                     X[j] = old_x;
+                     Func(X, out F, X.Length);
+                 }
+             return J;
+         }*/
         static void DNEQNF(NonlinearSystem Func, double ERREL, int L, int ITMAX, double[] XGuess, out double[] X, out double FNORM)
         {
             int splitTransitions = 0;
@@ -540,11 +543,15 @@ namespace Polymer_brush
             newthonWriter.WriteLine("Iteration; X0; F0; FNORM; J00;");
             int iterations = 0;
             double[] F = new double[L];
+           
             X = new double[XGuess.Length];
             double[] oldX = new double[XGuess.Length];
             double[] deltaX = new double[XGuess.Length];
             for (int i = 0; i < XGuess.Length; i++)
                 X[i] = XGuess[i];
+            double[] realComposition = new double[NumberOfComponents];
+            
+
             FNORM = 0;
             Func(X, out F, L);
             for (int i = 0; i < L; i++)
@@ -608,6 +615,7 @@ namespace Polymer_brush
                 //   oldX[j] = X[j];
 
                 X = Matrix.multiplyMatrixAndVector(L, L, reverse, rightParts);
+                
 
                 for (int i = 0; i < X.Length; i++)
                     deltaX[i] = X[i] - oldX[i];
@@ -625,8 +633,15 @@ namespace Polymer_brush
                 }
                 //<Split>
                 //Check if in split zone
-                throw new NotImplementedException();
-                if(X[0]>=mixingPartModule.segregationPoints[0]&& X[0]<= mixingPartModule.segregationPoints[1])
+                double sum = 0;
+                for (int i = 0; i < XGuess.Length; i++)
+                {
+                    realComposition[i + 1] = X[i];
+                    sum += X[i];
+                }
+                realComposition[0] = 1 - sum;
+                double a;
+                if (mixingPartModule.IsCompositionInsideSegregationZone(realComposition, out a))
                 {
                     if (NumberOfComponents != 2)
                         throw new Exception();
@@ -637,6 +652,17 @@ namespace Polymer_brush
                         X[0] = mixingPartModule.segregationPoints[0] - 0.1;
                     splitTransitions++;
                 }
+                /*if(X[0]>=mixingPartModule.segregationPoints[0]&& X[0]<= mixingPartModule.segregationPoints[1])
+                {
+                    if (NumberOfComponents != 2)
+                        throw new Exception();
+                    //Split
+                    if (deltaX[0] > 0)
+                        X[0] = mixingPartModule.segregationPoints[1] + 0.01;
+                    if (deltaX[0] < 0)
+                        X[0] = mixingPartModule.segregationPoints[0] - 0.1;
+                    splitTransitions++;
+                }*/
                 //</Split>
                 iterations++;
                 if (iterations > ITMAX)
@@ -1008,6 +1034,11 @@ namespace Polymer_brush
         //	return XX;
 
         //}
+    }
+    public enum CalculationMode
+    {
+        Usual,
+        InfinitlyDelute,
     }
     public struct Vector3
     {

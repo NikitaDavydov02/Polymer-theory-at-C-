@@ -47,7 +47,11 @@ namespace Polymer_brush
 		public bool IsCompositionInsideSegregationZone(double[] X, out double minPossibleF)
         {
 			minPossibleF = 0;
-			double Xadditive = X[2];
+			double Xadditive;
+			if (X.Length > 2)
+				Xadditive = X[2];
+			else
+				Xadditive = 0;
 			for(int i = 0; i < TernarySegregationPoints.Count - 1; i++)
             {
 				if(TernarySegregationPoints[i].Key<=Xadditive &&TernarySegregationPoints[i+1].Key > Xadditive)
@@ -230,7 +234,7 @@ namespace Polymer_brush
 		}
 		private void FindSegregationPointsBetweenSolventAndPolymerAtPresenceOfAdditive(double Xadditive)
         {
-			double[] initialComposition = new double[Program.NumberOfComponents];
+			double[] initialComposition = new double[3];
 
 			initialComposition[1] = 0.7; //polymer
 			initialComposition[2] = Xadditive;
