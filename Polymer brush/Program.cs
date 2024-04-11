@@ -36,35 +36,76 @@ namespace Polymer_brush
         static StreamWriter sw;
         static StreamWriter newthonWriter;
         static StreamWriter integralLogWriter;
+        static StreamWriter outputWriter;
         static double z = 6;
         //static double[] chemPotInTheBulk;
         static double[] chemPotAtTheBorder;
         static MixingPartModule mixingPartModule;
         static MixingPartModule mixingPartModuleCopy=null;
         static CalculationMode calculationMode;
+        static string inputPath = "input.xml";
+        static Dictionary<Input,string> LookingForInputFiles()
+        {
+            Dictionary<Input, string> inputs = new Dictionary<Input, string>();
+            string currentDirectoryPath = Environment.CurrentDirectory;
+            IEnumerable<string> files = Directory.EnumerateFiles(currentDirectoryPath);
+            foreach(string file in files)
+            {
+                if(file.Contains("input")&& file.Contains(".xml"))
+                {
+                    Input settings = new Input();
+                    DataContractSerializer serializer = new DataContractSerializer(typeof(Input));
+                    using (FileStream fs = new FileStream(file, FileMode.Open))
+                    {
+                        try
+                        {
+                            settings = serializer.ReadObject(fs) as Input;
+                        }
+                        catch(Exception e)
+                        {
+                            throw new Exception("Settings error " + e.Message);
+                        }
+                    }
+                    inputs.Add(settings,file);
+                }
+            }
+            return inputs;
+        }
         static void Main(string[] args)
         {
-            /*double[] guess = new double[2];
-			double[] X;
-			double norm;
-			guess[0] = 2;
-			guess[1] = 2;
-			DNEQNF(TestSystem, 0.0001, 2, 100, guess, out X, out norm);
-			Console.WriteLine("X[0] = " + X[0]);
-			Console.WriteLine("X[1] = " + X[1]);
-			Console.ReadLine();*/
-
+            Dictionary<Input, string>tasks = LookingForInputFiles();
+            foreach (Input task in tasks.Keys)
+            {
+                string outputPath = tasks[task];
+                RunTask(task);
+            }
+            Console.WriteLine("All tasks are done");
+            Console.ReadLine();
+            
+        }
+        static void RunTask(Input task)
+        {
+            if (File.Exists("output.txt"))
+                File.Delete("output.txt");
+            outputWriter = new StreamWriter(File.Create("output.txt"));
+            outputWriter.WriteLine();
+            outputWriter.WriteLine();
+            outputWriter.WriteLine();
+            outputWriter.WriteLine("/////////////////////////////////////////////////////////////");
+            mixingPartModuleCopy = null;
             double Fmix = 0;
             double u_sol = 0;
             double u_pol = 0;
             double u_bio = 0;
             calculationMode = CalculationMode.InfinitlyDelute;
             //ReadSettings();
-            Enter();
+            
+            Enter(task);
+            OutputSettings(task);
             CreateInputSettings();
             Console.WriteLine("Initialization successful");
             CalculateMixingSurface(0.005, false);
-            CalculateMixingSurface(0.005,true);
+            CalculateMixingSurface(0.005, true);
             if (calculationMode == CalculationMode.InfinitlyDelute)
                 SwitchToInfinitlyDeluteMode();
 
@@ -83,14 +124,14 @@ namespace Polymer_brush
             //return;
             sw = new StreamWriter("profile.txt");
             integralLogWriter = new StreamWriter("integral_log_writer.txt");
-            
+
 
             y_edge = BisectionSolve(y_min, y_max, yacc, NormalizationFunction, new List<double>());
             y_cur = y_min;
             integralLogWriter.Close();
 
-           //!Calculate polymer concentration at the start position(A / B boundary)
-           P_AB = NormalizationSubintegralValue(y_cur, new List<double>() { y_edge });
+            //!Calculate polymer concentration at the start position(A / B boundary)
+            P_AB = NormalizationSubintegralValue(y_cur, new List<double>() { y_edge });
             //P_AB = FindSubintegralValueForNormalization(y_cur, y_edge); // !   Polymer concentration at A/ B boundary(highest)  must work before finding profile to set Lagr multipliers in common block
 
             sw.WriteLine("y_cur    solvent    polymer    bio    osm_pressure");
@@ -101,11 +142,11 @@ namespace Polymer_brush
             int numberOfPoints = 40;
             double stepInRelativeUnits = (y_edge - 1) / numberOfPoints;
             //while (y_cur < y_edge)
-            for (y_cur = 1 +stepInRelativeUnits;y_cur < y_edge;y_cur+=stepInRelativeUnits)
+            for (y_cur = 1 + stepInRelativeUnits; y_cur < y_edge; y_cur += stepInRelativeUnits)
             {
                 Xbrush = new double[NumberOfComponents];
                 FindVolumeFractionsInTheBrushForPoint(out Xbrush, y_cur); //  !calculates concentration profile in the brush after the solution is found
-                
+
 
                 for (int i = 0; i < NumberOfComponents; i++)
                 {
@@ -125,12 +166,12 @@ namespace Polymer_brush
                 for (int i = 0; i < NumberOfComponents; i++)
                     composition.Add(fipolimer[i]);
                 profile.Add(new KeyValuePair<double, List<double>>(y_cur, composition));
-               // y_cur += aA / R;
+                // y_cur += aA / R;
             }
             y_cur = y_min;
             if (calculationMode == CalculationMode.InfinitlyDelute)
             {
-                Enter();
+                Enter(task);
                 Console.WriteLine("*************************");
                 Console.WriteLine("*************************");
                 Console.WriteLine("Finding additive concentration in infinitly delute solution approximation...");
@@ -146,12 +187,17 @@ namespace Polymer_brush
             }
             Console.WriteLine("");
             Console.WriteLine("Output");
-            for(int i=0;i<profile.Count;i++)
+            outputWriter.WriteLine();
+            outputWriter.WriteLine();
+            outputWriter.WriteLine("///////////////////////////OUTPUT/////////////////////////////");
+            outputWriter.WriteLine("y_cur    solvent    polymer    bio    osm_pressure");
+            for (int i = 0; i < profile.Count; i++)
             {
                 string line = profile[i].Key.ToString() + "    ";
                 for (int j = 0; j < profile[i].Value.Count; j++)
                     line += profile[i].Value[j] + "    ";
-                sw.WriteLine(line + (Osmmix(Program.NumberOfComponents, fipolimer) - osmbulk)); 
+                sw.WriteLine(line + (Osmmix(Program.NumberOfComponents, fipolimer) - osmbulk));
+                outputWriter.WriteLine(line + (Osmmix(Program.NumberOfComponents, fipolimer) - osmbulk));
             }
 
             Console.WriteLine("Beta: " + y_edge);
@@ -159,26 +205,18 @@ namespace Polymer_brush
 
 
             sw.Close();
-            Console.ReadLine();
-        }
-        static void ReadSettings()
-        {
-            Input settings = new Input();
-            DataContractSerializer serializer = new DataContractSerializer(typeof(Input));
-            using (FileStream fs = new FileStream("settings.xml", FileMode.Open))
-            {
-                try
-                {
-                    settings = serializer.ReadObject(fs) as Input;
+            outputWriter.WriteLine("/////////////////////////////////////////////////////////////");
+            outputWriter.WriteLine("**************************************************************");
+            outputWriter.WriteLine("**************************************************************");
+            outputWriter.WriteLine("**************************************************************");
+            outputWriter.WriteLine("**************************************************************");
 
-                }
-                catch
-                {
-                    Console.WriteLine("Default settings will be applied");
-                    return;
-                }
-                
-            }
+            outputWriter.Close();
+        }
+        static void ApplySettings(Input settings)
+        {
+            if (settings == null)
+                return;
             NumberOfComponents = settings.Components.Count;
             Component polymer = null;
             foreach (Component comp in settings.Components)
@@ -219,7 +257,7 @@ namespace Polymer_brush
         }
         static void CreateInputSettings()
         {
-            if (File.Exists("settings.xml"))
+            if (File.Exists(inputPath))
                 return;
             Input settings = new Input();
             settings.Components = new List<Component>();
@@ -264,9 +302,9 @@ namespace Polymer_brush
             settings.DensityDegree = 1;
             settings.Radius= 3.77 * Math.Pow(10, -8);
             DataContractSerializer serializer = new DataContractSerializer(typeof(Input));
-            if(File.Exists("settings.xml"))
-                File.Delete("settings.xml");
-            using (FileStream fs = new FileStream("settings.xml", FileMode.Create))
+            if(File.Exists(inputPath))
+                File.Delete(inputPath);
+            using (FileStream fs = new FileStream(inputPath, FileMode.Create))
             {
                 serializer.WriteObject(fs, settings);
             }
@@ -328,11 +366,11 @@ namespace Polymer_brush
             /////////////////////////////////////////////////////////////
             
         }
-        static void Enter()
+        static void Enter(Input input)
         {
             Console.WriteLine("Initializing...");
             UploadDefaultSettings();
-            ReadSettings();
+            ApplySettings(input);
             ////////////////////////////////////
             maxSigma = R / (3 * rNB * aA * aA * aA);
             double actualSigma = maxSigma * areaDensityDegree;
@@ -1056,6 +1094,53 @@ namespace Polymer_brush
             for (int i = 0; i < L; i++)
                 F[i] = (chemPotInTheComplementaryBrush[i + 2] - chemPotInTheBulk[i + 2]);
             return logString;
+        }
+        static void OutputSettings(Input settings)
+        {
+            if (settings == null)
+                return;
+            outputWriter.WriteLine("///////////////////////////INPUT////////////////////////////");
+            outputWriter.WriteLine("Number of components: " + settings.Components.Count);
+
+            Component polymer = null;
+            foreach (Component comp in settings.Components)
+                if (comp.Type == ComponentType.Polymer)
+                    polymer = comp;
+
+            outputWriter.WriteLine("c: " + polymer.c);
+            outputWriter.WriteLine("aA: " + polymer.KuhnLength);
+            outputWriter.WriteLine("rN: " + polymer.NtotalSegments);
+            outputWriter.WriteLine("rNA: " + polymer.NouterSegments);
+            outputWriter.WriteLine("Radius (nm): " + R*Math.Pow(10,9));
+            if (settings.geometry == Geometry.Sphere)
+                outputWriter.WriteLine("nu: " + 2);
+            outputWriter.WriteLine("areaDensityDegree: " + settings.DensityDegree);
+            outputWriter.WriteLine("Number of polymer groups: " + polymer.groupsFractions.Count);
+
+            int a = 0;
+            foreach(Component comp in settings.Components)
+            {
+                outputWriter.WriteLine();
+                outputWriter.WriteLine("Name: " + comp.Name);
+                outputWriter.WriteLine("Size: " + comp.Size);
+                outputWriter.WriteLine("Bulk fraction: " + settings.VolumeFractionsInTheBulk[a]);
+                a++;
+            }
+            outputWriter.WriteLine();
+
+            for (int i = 0; i < NumberOfPolymerGroupTypes; i++)
+                outputWriter.WriteLine("Polmer group fraaction["+i+"]: " + polymer.groupsFractions[i]);
+
+            outputWriter.WriteLine();
+            outputWriter.WriteLine("Chi matrix");
+            for (int i = 0; i < chiMatrixSize; i++)
+            {
+                string line = "";
+                for (int j = 0; j < chiMatrixSize; j++)
+                    line += settings.Chi[i][j]+" ";
+                outputWriter.WriteLine(line);
+            }
+
         }
     }
     public enum CalculationMode
