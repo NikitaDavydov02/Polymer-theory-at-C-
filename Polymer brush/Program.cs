@@ -155,11 +155,6 @@ namespace Polymer_brush
         }
         static void SaveInputSettings()
         {
-            Input input = new Input();
-            input.AreaPerChain = areaPerChain;
-            input.Components = new List<Component>();
-            Component solvent = new Component();
-
         }
         static void Enter()
         {
@@ -171,27 +166,25 @@ namespace Polymer_brush
             rN = 80.0; //total number of polymer segments per chain
             rNA = 60.0; //number of segments in A - subchain
             rNB = rN - rNA;
+
             nu = 2.0; //spherical micelle
             R = 3.77 * Math.Pow(10, -7);
-            maxSigma = R / (3 * rNB * aA * aA * aA);
-            areaDensityDegree = 1;
+            maxSigma = 1 / (aA * aA);
+            areaDensityDegree = 0.5;
             double actualSigma = maxSigma * areaDensityDegree;
             areaPerChain = 1 / actualSigma;
 
-            /* areaPerChain = (7.0 * Math.Pow(10, -9)) * (7.0 * Math.Pow(10, -9)) / 0.12;
+            /////////////////////////////////////////////////
+             areaPerChain = (7.0 * Math.Pow(10, -9)) * (7.0 * Math.Pow(10, -9)) / 0.12;
              areaPerChain = (7.0 * Math.Pow(10, -9)) * (7.0 * Math.Pow(10, -9)) / 0.6;
              areaPerChain = 50 * Math.Pow(10, -18);
-             R = rNB * (nu + 1) * aA * aA * aA / areaPerChain;*/ // core radius((nu+1.0)*rNB / areaPerChain)**2    LAGRANGE_STR1 = BA * (  - 1.0) * *2 * ((nu + 1.0) * rNB / areaPerChain) * *2 * aA * *3  CHECK THIS
-                                                                 //write(*, *) R,areaPerChain
-                                                                 //
-            BA = coe / ((rNA * aA) * (rNA * aA));
-            //BA = 0.2 * BA;
-
-            //y_min = 1.0 + 0.1 * aA / R;
-            y_min = 1.0 + aA / R;
+             R = rNB * (nu + 1) * aA * aA * aA / areaPerChain; // core radius((nu+1.0)*rNB / areaPerChain)**2    LAGRANGE_STR1 = BA * (  - 1.0) * *2 * ((nu + 1.0) * rNB / areaPerChain) * *2 * aA * *3  CHECK THIS
+             y_min = 1.0 + aA / R;
             y_max = 1.00001 * (1.0 + 1.0 * aA * rNA / R);                 //y_max = 1.0d0 * (1.0d0 + 2.0 * aA * rNA / R)
             yacc = Math.Pow(10, -8);
+            ///////////////////////////////////////////////
 
+            BA = coe / ((rNA * aA) * (rNA * aA));
             //! areaPerChain min for all morphologies:
             //!areaPerChain_MIN = 10.0 * (nu + 1.1) * aA * *2
             //!areaPerChain_MAX = 3.0d0 * aA * *2 * (3.1415926 * 4.0 * rNB * *2 / 3.0d0) **(1.0 / 3.0)
