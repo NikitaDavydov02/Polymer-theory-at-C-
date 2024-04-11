@@ -16,25 +16,26 @@ namespace Polymer_brush.Components
         public string Name;
         [DataMember]
         public int Size;
-
-    }
-    [DataContract]
-    public class PolymerComponent : Component
-    {
         [DataMember]
-        public double KunLength;
+        public double KuhnLength;
         [DataMember]
-        public double NtotalSegments;
+        public double c;
         [DataMember]
-        public double NgroupTypes;
+        public int NtotalSegments;
+        [DataMember]
+        public int NouterSegments;
         [DataMember]
         public List<double> groupsFractions;
+
     }
     [DataContract]
     public enum ComponentType
     {
+        [EnumMember(Value = "Pol")]
         Polymer,
+        [EnumMember(Value = "Sol")]
         Solvent,
+        [EnumMember(Value = "Add")]
         Additive,
     }
 }

@@ -15,14 +15,15 @@ namespace Polymer_brush
         [DataMember]
         public List<Component> Components;
         [DataMember]
-        public Dictionary<Component, double> VolumeFractionsInTheBulk;
+        public List<double> VolumeFractionsInTheBulk;
         [DataMember]
-        public double[,] Chi;
+        public List<List<double>> Chi;
         [DataMember]
         public Geometry geometry;
         [DataMember]
-        public double AreaPerChain;
-
+        public double Radius;
+        [DataMember]
+        public double DensityDegree;
 
 
 
@@ -30,6 +31,7 @@ namespace Polymer_brush
     [DataContract]
     enum Geometry
     {
+        [EnumMember]
         Sphere,
     }
 }

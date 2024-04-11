@@ -7,6 +7,7 @@ using System.IO;
 using System.Runtime.Remoting.Messaging;
 using System.Reflection;
 using Polymer_brush.Components;
+using System.Runtime.Serialization;
 
 namespace Polymer_brush
 {
@@ -58,7 +59,10 @@ namespace Polymer_brush
             double u_pol = 0;
             double u_bio = 0;
             calculationMode = CalculationMode.InfinitlyDelute;
+            //ReadSettings();
             Enter();
+            CreateInputSettings();
+            Console.WriteLine("Initialization successful");
             CalculateMixingSurface(0.005, false);
             CalculateMixingSurface(0.005,true);
             if (calculationMode == CalculationMode.InfinitlyDelute)
@@ -93,7 +97,11 @@ namespace Polymer_brush
 
             List<KeyValuePair<double, List<double>>> profile = new List<KeyValuePair<double, List<double>>>();
             Console.WriteLine("Calculating profile...");
-            while (y_cur < y_edge)
+            y_cur = 1;
+            int numberOfPoints = 40;
+            double stepInRelativeUnits = (y_edge - 1) / numberOfPoints;
+            //while (y_cur < y_edge)
+            for (y_cur = 1 +stepInRelativeUnits;y_cur < y_edge;y_cur+=stepInRelativeUnits)
             {
                 Xbrush = new double[NumberOfComponents];
                 FindVolumeFractionsInTheBrushForPoint(out Xbrush, y_cur); //  !calculates concentration profile in the brush after the solution is found
@@ -117,7 +125,7 @@ namespace Polymer_brush
                 for (int i = 0; i < NumberOfComponents; i++)
                     composition.Add(fipolimer[i]);
                 profile.Add(new KeyValuePair<double, List<double>>(y_cur, composition));
-                y_cur += aA / R;
+               // y_cur += aA / R;
             }
             y_cur = y_min;
             if (calculationMode == CalculationMode.InfinitlyDelute)
@@ -153,12 +161,119 @@ namespace Polymer_brush
             sw.Close();
             Console.ReadLine();
         }
-        static void SaveInputSettings()
+        static void ReadSettings()
         {
+            Input settings = new Input();
+            DataContractSerializer serializer = new DataContractSerializer(typeof(Input));
+            using (FileStream fs = new FileStream("settings.xml", FileMode.Open))
+            {
+                try
+                {
+                    settings = serializer.ReadObject(fs) as Input;
+
+                }
+                catch
+                {
+                    Console.WriteLine("Default settings will be applied");
+                    return;
+                }
+                
+            }
+            NumberOfComponents = settings.Components.Count;
+            Component polymer = null;
+            foreach (Component comp in settings.Components)
+                if (comp.Type == ComponentType.Polymer)
+                    polymer = comp;
+            c = polymer.c;
+            aA = polymer.KuhnLength;
+            rN = polymer.NtotalSegments;
+            rNA = polymer.NouterSegments;
+            rNB = rN - rNA;
+            R = settings.Radius;
+            if (R > aA * rNB && nu == 2)
+                throw new Exception("These chains are too short to fill the core");
+            if (settings.geometry == Geometry.Sphere)
+                nu = 2;
+            areaDensityDegree = settings.DensityDegree;
+            NumberOfPolymerGroupTypes = polymer.groupsFractions.Count;
+
+            size = new double[MaxNumberOfComponent];
+            for (int i = 0; i < NumberOfComponents; i++)
+                size[i] = settings.Components[i].Size;
+
+            fractionsOfGroups = new double[NumberOfPolymerGroupTypes];
+            for (int i = 0; i < NumberOfPolymerGroupTypes; i++)
+                fractionsOfGroups[i] = polymer.groupsFractions[i];
+
+            chi = new double[MaxNumberOfComponent, MaxNumberOfComponent];
+            chiMatrixSize = NumberOfComponents + NumberOfPolymerGroupTypes - 1;
+            for (int i = 0; i < chiMatrixSize; i++)
+            {
+                for (int j = 0; j < chiMatrixSize; j++)
+                    chi[i, j] = settings.Chi[i][j];
+            }
+
+            volumeFractionsInTheBulk = new double[NumberOfComponents];
+            for (int i = 0; i < NumberOfComponents; i++)
+                volumeFractionsInTheBulk[i] = settings.VolumeFractionsInTheBulk[i];
         }
-        static void Enter()
+        static void CreateInputSettings()
         {
-            Console.WriteLine("Initializing...");
+            if (File.Exists("settings.xml"))
+                return;
+            Input settings = new Input();
+            settings.Components = new List<Component>();
+            //<Solvent>
+            Component solvent = new Component();
+            solvent.Name = "Solvent";
+            solvent.Type = ComponentType.Solvent;
+            solvent.Size = 1;
+            //</Solvent>
+            //<Polymer>
+            Component polymer = new Component();
+            polymer.Name = "Polymer";
+            polymer.Type = ComponentType.Polymer;
+            polymer.NtotalSegments = 80;
+            polymer.NouterSegments = 60;
+            polymer.Size = polymer.NouterSegments;
+            polymer.groupsFractions = new List<double>();
+            polymer.groupsFractions.Add(1);
+            polymer.KuhnLength = aA;
+            //</Polymer>
+            //<Additive>
+            Component additive = new Component();
+            additive.Name = "Additive";
+            additive.Type = ComponentType.Additive;
+            additive.Size = 3;
+            //</Additive>
+            settings.Components.Add(solvent);
+            settings.Components.Add(polymer);
+            settings.Components.Add(additive);
+            settings.VolumeFractionsInTheBulk = new List<double>();
+            settings.VolumeFractionsInTheBulk.Add(0.98);
+            settings.VolumeFractionsInTheBulk.Add(0);
+            settings.VolumeFractionsInTheBulk.Add(0.02);
+            settings.Chi = new List<List<double>>();
+            for(int i = 0; i < chiMatrixSize; i++)
+            {
+                settings.Chi.Add(new List<double>());
+                for (int j = 0; j < chiMatrixSize; j++)
+                    settings.Chi[i].Add(chi[i, j]);
+            }
+            settings.geometry = Geometry.Sphere;
+            settings.DensityDegree = 1;
+            settings.Radius= 3.77 * Math.Pow(10, -8);
+            DataContractSerializer serializer = new DataContractSerializer(typeof(Input));
+            if(File.Exists("settings.xml"))
+                File.Delete("settings.xml");
+            using (FileStream fs = new FileStream("settings.xml", FileMode.Create))
+            {
+                serializer.WriteObject(fs, settings);
+            }
+
+        }
+        static void UploadDefaultSettings()
+        {
             c = 2.0;
             pi = 3.1415926;
             coe = (3.0 / 8.0) * pi * pi;
@@ -166,36 +281,17 @@ namespace Polymer_brush
             rN = 80.0; //total number of polymer segments per chain
             rNA = 60.0; //number of segments in A - subchain
             rNB = rN - rNA;
-
             nu = 2.0; //spherical micelle
-            R = 3.77 * Math.Pow(10, -7);
-            maxSigma = 1 / (aA * aA);
-            areaDensityDegree = 0.5;
-            double actualSigma = maxSigma * areaDensityDegree;
-            areaPerChain = 1 / actualSigma;
+            R = 3.77 * Math.Pow(10, -8);
+            if (R > aA * rNB && nu == 2)
+                throw new Exception("These chains are too short to fill the core");
+            
+            areaDensityDegree = 1;
 
-            /////////////////////////////////////////////////
-             areaPerChain = (7.0 * Math.Pow(10, -9)) * (7.0 * Math.Pow(10, -9)) / 0.12;
-             areaPerChain = (7.0 * Math.Pow(10, -9)) * (7.0 * Math.Pow(10, -9)) / 0.6;
-             areaPerChain = 50 * Math.Pow(10, -18);
-             R = rNB * (nu + 1) * aA * aA * aA / areaPerChain; // core radius((nu+1.0)*rNB / areaPerChain)**2    LAGRANGE_STR1 = BA * (  - 1.0) * *2 * ((nu + 1.0) * rNB / areaPerChain) * *2 * aA * *3  CHECK THIS
-             y_min = 1.0 + aA / R;
-            y_max = 1.00001 * (1.0 + 1.0 * aA * rNA / R);                 //y_max = 1.0d0 * (1.0d0 + 2.0 * aA * rNA / R)
-            yacc = Math.Pow(10, -8);
-            ///////////////////////////////////////////////
-
-            BA = coe / ((rNA * aA) * (rNA * aA));
-            //! areaPerChain min for all morphologies:
-            //!areaPerChain_MIN = 10.0 * (nu + 1.1) * aA * *2
-            //!areaPerChain_MAX = 3.0d0 * aA * *2 * (3.1415926 * 4.0 * rNB * *2 / 3.0d0) **(1.0 / 3.0)
-            //				 !write(*, *) BA,R,rNB* aA, areaPerChain,10.0 * (nu + 1.1) * aA * *2,y_max,BA * (R * (y_max - 1.0)) * *2,
-            //!stop
             NumberOfComponents = 3;
             NumberOfPolymerGroupTypes = 1;
 
-            chemPotInTheBulk = new double[NumberOfComponents];
-            chemPotAtTheBorder = new double[NumberOfComponents];
-            fipolimer = new double[NumberOfComponents];
+            
 
             size = new double[MaxNumberOfComponent];
             for (int i = 0; i < NumberOfComponents; i++)
@@ -204,32 +300,13 @@ namespace Polymer_brush
             size[0] = 1.0;// ! solvent
             size[1] = rNA;// polymer
             size[2] = 3.0;// bio
-            //size[2] = 60.0;
 
             chi = new double[MaxNumberOfComponent, MaxNumberOfComponent];
             chiMatrixSize = NumberOfComponents + NumberOfPolymerGroupTypes - 1;
-            //solv
-            //bio
-            //pol
-            fractionsOfGroups = new double[NumberOfPolymerGroupTypes];
-            for (int i = 0; i < NumberOfPolymerGroupTypes; i++)
-                fractionsOfGroups[i] = 0.1;
-            fractionsOfGroups[0] = 1;
-            //fractionsOfGroups[1] = 0;
 
             chi[0, 1] = 0.5;//solv-pol
             chi[0, 2] = 1;//solv-bio
-            chi[1, 2] = 0;//pol-bio
-            /*//Solvent with other
-            chi[0, 3] = -1;//! solv - bio
-            chi[0, 1] = 0;//! solv - polym first group
-            chi[0, 2] = 0;//! solv - polym second group
-            //Bio with other
-            chi[3, 1] = -1; //bio- polym first group
-            chi[3, 2] = -1;  //bio- polym second group
-            //Polymer A with other
-            chi[1, 2] = 0;*/
-
+            chi[1, 2] = 0;
             for (int i = 0; i < chiMatrixSize; i++)
             {
                 chi[i, i] = 0;
@@ -237,41 +314,50 @@ namespace Polymer_brush
                     chi[j, i] = chi[i, j];
             }
 
-            etas = new double[chiMatrixSize, chiMatrixSize];
-            for (int i = 0; i < chiMatrixSize; i++)
-                for (int j = 0; j < chiMatrixSize; j++)
-                    etas[i, j] = Math.Exp(-3 * chi[i, j] / z);
+            fractionsOfGroups = new double[NumberOfPolymerGroupTypes];
+            for (int i = 0; i < NumberOfPolymerGroupTypes; i++)
+                fractionsOfGroups[i] = 0.1;
+            fractionsOfGroups[0] = 1;
 
-            //!give bulk composition and calculate Lagr.multipliers and osm pressure in the bulk:
-            ////////////////////////////////////////////////////////////
-            /////////////////////////////////////////////////////////////
-            ////////////////////////////////////////////////////////////
-            /////////////////////////////////////////////////////////////
-            
             volumeFractionsInTheBulk = new double[NumberOfComponents];
             for (int i = 0; i < NumberOfComponents; i++)
                 volumeFractionsInTheBulk[i] = 0.0;
             volumeFractionsInTheBulk[2] = 0.02;//bio
             volumeFractionsInTheBulk[0] = 0.98;//solvent
-                                               //volumeFractionsInTheBulk[0] = 1.0;
 
-            ////////////////////////////////////////////////////////////
             /////////////////////////////////////////////////////////////
-            ////////////////////////////////////////////////////////////
-            /////////////////////////////////////////////////////////////
+            
+        }
+        static void Enter()
+        {
+            Console.WriteLine("Initializing...");
+            UploadDefaultSettings();
+            ReadSettings();
+            ////////////////////////////////////
+            maxSigma = R / (3 * rNB * aA * aA * aA);
+            double actualSigma = maxSigma * areaDensityDegree;
+            areaPerChain = 1 / actualSigma;
+            y_min = 1.0 + aA / R;
+            y_max = 1.00001 * (1.0 + 1.0 * aA * rNA / R);                 //y_max = 1.0d0 * (1.0d0 + 2.0 * aA * rNA / R)
+            yacc = Math.Pow(10, -8);
+            BA = coe / ((rNA * aA) * (rNA * aA));
+            chemPotInTheBulk = new double[NumberOfComponents];
+            chemPotAtTheBorder = new double[NumberOfComponents];
+            fipolimer = new double[NumberOfComponents];
 
+            etas = new double[chiMatrixSize, chiMatrixSize];
+            for (int i = 0; i < chiMatrixSize; i++)
+                for (int j = 0; j < chiMatrixSize; j++)
+                    etas[i, j] = Math.Exp(-3 * chi[i, j] / z);
+            ////////////////////////////////////
 
-            //Lagrmix(2, volumeFractionsInTheBulk, out Lagrbulk);
             if (mixingPartModuleCopy == null)
                 mixingPartModule = new MixingPartModule();
             else
                 mixingPartModule = mixingPartModuleCopy;
 
             Lagrmix(NumberOfComponents, volumeFractionsInTheBulk, out chemPotInTheBulk);
-            //chemPotInTheBulk[1] = Lagrbulk[1];//this is for biocomponent
-            //osmbulk = Osmmix(NumberOfComponents - 1, volumeFractionsInTheBulk);// !  this is for solvent
-
-
+           
         }
         static void SwitchToInfinitlyDeluteMode()
         {
@@ -971,169 +1057,6 @@ namespace Polymer_brush
                 F[i] = (chemPotInTheComplementaryBrush[i + 2] - chemPotInTheBulk[i + 2]);
             return logString;
         }
-       /* static double[] FindSegregationPointsBetweenSolventAndPolymer()
-        {
-            double[] initialComposition = new double[3];
-
-            initialComposition[2] = 0.7; //polymer
-            initialComposition[1] = 0;//bio
-            initialComposition[0] = 1 - initialComposition[2]; //solvent
-            double Finit = mixingPartModule.CalculateMixingFreeEnergy(initialComposition);
-
-            double x1 = initialComposition[2];//polymer molar fraction
-            double x2 = initialComposition[2];
-            double dx = 0.01;
-
-            double[] X = new double[3];
-            for (int i = 0; i < 3; i++)
-                X[i] = 0;
-
-            double bestFmix = 10000000;
-            double[] best_x = new double[2];
-
-            while (x1 > 0)
-            {
-                x2 = initialComposition[2] + dx;
-
-                double[] leftComposition = new double[3];
-                leftComposition[0] = 1 - x1;
-                leftComposition[1] = 0;
-                leftComposition[2] = x1;
-                double leftF = mixingPartModule.CalculateMixingFreeEnergy(leftComposition);
-
-                while (x2 < 1)
-                {
-                    double[] rightComposition = new double[3];
-                    rightComposition[0] = 1 - x2;
-                    rightComposition[1] = 0;
-                    rightComposition[2] = x2;
-                    double rightF = mixingPartModule.CalculateMixingFreeEnergy(rightComposition);
-                    double Fsep = leftF + (initialComposition[2] - x1) * (rightF - leftF) / (x2 - x1);
-                    double delta = Fsep - Finit;
-                    if (delta < bestFmix)
-                    {
-                        bestFmix = delta;
-                        best_x[0] = x1;
-                        best_x[1] = x2;
-                    }
-                    x2 += dx;
-                }
-                x1 -= dx;
-            }
-            return best_x;
-        }
-        */
-        //static void SegregationEquations(double[] X, out double[] F, int L)
-        //{
-        //    double nu = 2;
-
-        //    double[] mixingPartOfExchangeChemicalPotentials_0;
-        //    double[] volumeFractions_0 = new double[3];
-        //    volumeFractions_0[0] = X[0];
-        //    volumeFractions_0[1] = 0;
-        //    volumeFractions_0[2] = 1 - X[0];
-        //    //!Calculate values that in ideal case must be equal to Lagrangian multipliers based on current concentrations
-        //    Lagrmix(3, volumeFractions_0, out mixingPartOfExchangeChemicalPotentials_0);
-
-        //    double[] mixingPartOfExchangeChemicalPotentials_1;
-        //    double[] volumeFractions_1 = new double[3];
-        //    volumeFractions_1[0] = X[1];
-        //    volumeFractions_1[1] = 0;
-        //    volumeFractions_1[2] = 1 - X[1];
-        //    //!Calculate values that in ideal case must be equal to Lagrangian multipliers based on current concentrations
-        //    Lagrmix(3, volumeFractions_1, out mixingPartOfExchangeChemicalPotentials_1);
-        //    F = new double[L];
-
-        //    //F[0] = (mixingPartOfExchangeChemicalPotentials[1] - chemPotInTheBulk[1]) * (mixingPartOfExchangeChemicalPotentials[1] - chemPotInTheBulk[1]);// !bio contaminant error
-        //    F[0] = (mixingPartOfExchangeChemicalPotentials_0[1] - mixingPartOfExchangeChemicalPotentials_1[1]) * (mixingPartOfExchangeChemicalPotentials_0[1] - mixingPartOfExchangeChemicalPotentials_1[1]);
-        //    double secondEquation = mixingPartModule.CalculateMixingFreeEnergy(volumeFractions_1) - mixingPartModule.CalculateMixingFreeEnergy(volumeFractions_0) - (volumeFractions_1[1] - volumeFractions_0[1]) * mixingPartOfExchangeChemicalPotentials_0[1];
-        //    F[1] = Math.Pow(secondEquation, 2);
-        //}
-
-        //static double CalculateMixingFreeEnergy(double[] X)
-        //      {
-        //	double a = X[0] * Math.Log(X[0]) + X[1] * Math.Log(X[1]) /  size[1];
-        //	double b = chi[1, 2] * X[1] * X[2];
-        //	double c = chi[0, 1] * X[0] * X[1];
-        //	double d = chi[0, 2] * X[0] * X[2];
-        //	return a + b + c + d;
-        //}
-        //static double CalculateGugenheimMixingFreeEnergy(double[] X)
-        //{
-        //	int n = X.Length;
-        //	double translationSum = X[0] * Math.Log(X[0]) + X[1] * Math.Log(X[1]) /  size[1];
-        //	double[] XX = CalculateGugenheimCorrelations(X, etas);
-        //	double mixingSum = 0;
-        //	for (int i = 0; i < n; i++)
-        //		for (int j = 0; j < i; j++)
-        //			mixingSum += chi[i, j] * XX[i] * XX[j] * X[i] * X[j] * etas[i, j];
-
-        //	/*double b = chi[1, 2] * X[1] * X[2];
-        //	double c = chi[0, 1] * X[0] * X[1];
-        //	double d = chi[0, 2] * X[0] * X[2];*/
-        //	double output = translationSum + mixingSum;
-        //	return output;
-        //}
-        //static double CalculateExchangeChemialPotentialOfComponent(double[] X, int componenIndex)
-        //      {
-        //	double f = CalculateMixingFreeEnergy(X);
-        //	//double f = CalculateGugenheimMixingFreeEnergy(X);
-        //	double x = X[componenIndex];
-        //	double max_dx = 1 - x;
-        //          if (X[0] < max_dx)
-        //		max_dx = X[0];
-        //	double dx = 0.01*x;
-        //	if (dx == 0)
-        //		dx = 0.01;
-        //	if (dx > max_dx)
-        //		dx = max_dx;
-
-        //	double oldSolventVolumeFraction = X[0];
-        //	double x_dx = x + dx;
-        //	X[componenIndex] = x_dx;
-        //	X[0] -= dx;
-        //	double f_df = CalculateMixingFreeEnergy(X);
-        //	//double f_df = CalculateGugenheimMixingFreeEnergy(X);
-        //	X[0] = oldSolventVolumeFraction;
-        //	X[componenIndex] = x;
-        //	return (f_df - f) / dx;
-
-
-        //}
-        //static double[] CalculateGugenheimCorrelations(double[] alphas, double[,] etas)
-        //      {
-        //	int n = alphas.Length;
-        //	double[] XX = new double[n];
-        //	double[] newXX = new double[n];
-        //	double initialGuess = 1;
-        //	for(int i = 0; i < n; i++)
-        //          {
-        //		XX[i] = initialGuess;
-        //		initialGuess -= 0.0001;
-        //	}
-        //	bool converged = false;
-        //          while (!converged)
-        //          {
-        //		for (int i = 0; i < n; i++)
-        //		{
-        //			double sum = 0;
-        //			for (int j = 0; j < n; j++)
-        //				sum += alphas[j] * XX[j] * etas[i, j];
-        //			newXX[i] = 1 / sum;
-        //		}
-        //		for (int i = 0; i < n; i++)
-        //			XX[i] = (XX[i] + newXX[i]) / 2;
-        //		converged = true;
-        //		for (int i = 0; i < n; i++)
-        //			if (Math.Abs(XX[i] - newXX[i]) > Math.Pow(10, -12))
-        //			{
-        //				converged = false;
-        //				break;
-        //			}
-        //	}
-        //	return XX;
-
-        //}
     }
     public enum CalculationMode
     {
