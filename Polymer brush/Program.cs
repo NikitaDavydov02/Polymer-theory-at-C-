@@ -27,6 +27,8 @@ namespace Polymer_brush
         public static int NumberOfComponents;
         public static int NumberOfPolymerGroupTypes;
         public static int chiMatrixSize;
+        public static double maxSigma;
+        public static double areaDensityDegree = 1;
 
         static double[] Xbrush, fipolimer;
         static double point_y;
@@ -170,12 +172,20 @@ namespace Polymer_brush
             rNA = 60.0; //number of segments in A - subchain
             rNB = rN - rNA;
             nu = 2.0; //spherical micelle
-            areaPerChain = (7.0 * Math.Pow(10, -9)) * (7.0 * Math.Pow(10, -9)) / 0.12;
-            areaPerChain = (7.0 * Math.Pow(10, -9)) * (7.0 * Math.Pow(10, -9)) / 0.6;
-            R = rNB * (nu + 1) * aA * aA * aA / areaPerChain; // core radius((nu+1.0)*rNB / areaPerChain)**2    LAGRANGE_STR1 = BA * (  - 1.0) * *2 * ((nu + 1.0) * rNB / areaPerChain) * *2 * aA * *3  CHECK THIS
-                                                              //write(*, *) R,areaPerChain
-                                                              //
+            R = 3.77 * Math.Pow(10, -7);
+            maxSigma = R / (3 * rNB * aA * aA * aA);
+            areaDensityDegree = 1;
+            double actualSigma = maxSigma * areaDensityDegree;
+            areaPerChain = 1 / actualSigma;
+
+            /* areaPerChain = (7.0 * Math.Pow(10, -9)) * (7.0 * Math.Pow(10, -9)) / 0.12;
+             areaPerChain = (7.0 * Math.Pow(10, -9)) * (7.0 * Math.Pow(10, -9)) / 0.6;
+             areaPerChain = 50 * Math.Pow(10, -18);
+             R = rNB * (nu + 1) * aA * aA * aA / areaPerChain;*/ // core radius((nu+1.0)*rNB / areaPerChain)**2    LAGRANGE_STR1 = BA * (  - 1.0) * *2 * ((nu + 1.0) * rNB / areaPerChain) * *2 * aA * *3  CHECK THIS
+                                                                 //write(*, *) R,areaPerChain
+                                                                 //
             BA = coe / ((rNA * aA) * (rNA * aA));
+            //BA = 0.2 * BA;
 
             //y_min = 1.0 + 0.1 * aA / R;
             y_min = 1.0 + aA / R;
@@ -214,9 +224,9 @@ namespace Polymer_brush
             fractionsOfGroups[0] = 1;
             //fractionsOfGroups[1] = 0;
 
-            chi[0, 1] = 1.0;//solv-pol
+            chi[0, 1] = 0.5;//solv-pol
             chi[0, 2] = 1;//solv-bio
-            chi[1, 2] = -1;//pol-bio
+            chi[1, 2] = 0;//pol-bio
             /*//Solvent with other
             chi[0, 3] = -1;//! solv - bio
             chi[0, 1] = 0;//! solv - polym first group
@@ -352,7 +362,7 @@ namespace Polymer_brush
             //chemPotAtTheBorder[0] = chemPotInTheBulk[0];//solvent
             //chemPotAtTheBorder[1] = chemPotInTheBulk[1];//bio
             //Finding volume fractions at the border
-            double ERREL = Math.Pow(10, -4);
+            double ERREL = Math.Pow(10, -6);
             //double ERREL = Math.Pow(10, -4);
 
             double[] XBorderGUESS = new double[NumberOfComponents - 1];//Everything except polymer
@@ -727,8 +737,8 @@ namespace Polymer_brush
                         newthonWriter.Close();
                         if (NumberOfComponents != 2)
                             throw new NotImplementedException();
-                        X[0] = firstSegregationPoint[1];
-
+                        //X[0] = firstSegregationPoint[1];
+                        X[0] = secondSegregationPoint[1];
                         return;
                     }
                     else
