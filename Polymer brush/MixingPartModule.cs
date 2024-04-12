@@ -15,6 +15,8 @@ namespace Polymer_brush
 		//public List<KeyValuePair<double, double[]>> TernarySegregationPoints { get; private set; }
 		//public List<KeyValuePair<double, double[]>> TernarySegregatioMixingEnergies { get; private set; }
 		public List<Node> Nodes { get; private set; }
+		public double mixingPart;
+		public double entropyPart;
 		public MixingPartModule()
 		{
 			//TernarySegregationPoints = new List<KeyValuePair<double, double[]>>();
@@ -134,21 +136,24 @@ namespace Polymer_brush
 			for(int i=0;i<Program.NumberOfComponents;i++)
 				if(XofMolecules[i]!=0)
 					a += XofMolecules[i] * Math.Log(XofMolecules[i]) / Program.size[i];
+			entropyPart = a;
 			//a=X[0] * Math.Log(X[0]) + X[1] * Math.Log(X[1]) / Program.size[1];
 			/*double b = Program.chi[1, 2] * X[1] * X[2];
 			double c = Program.chi[0, 1] * X[0] * X[1];
 			double d = Program.chi[0, 2] * X[0] * X[2];*/
+			double b = 0;
 			for (int i = 0; i < Program.chiMatrixSize; i++)
 				for (int j = 0;j < Program.chiMatrixSize; j++)
 					if(j>i && X[i] != 0	&& X[j] != 0)
 					{
 						if(i==0&&j==1)
-                            a += (Program.chi[i, j] + Program.c * X[1] * X[1]) * X[i] * X[j];
+                            b += (Program.chi[i, j] + Program.c * X[1] * X[1]) * X[i] * X[j];
 						else
-							a += Program.chi[i, j] * X[i] * X[j];
+							b += Program.chi[i, j] * X[i] * X[j];
                     }
 			//return a + b + c + d;
-			return a;
+			mixingPart = b;
+			return (a+b);
 		}
 		private double CalculateGugenheimMixingFreeEnergy(double[] XofMolecules)
 		{
@@ -163,12 +168,20 @@ namespace Polymer_brush
 			for (int i = 0; i < n; i++)
 				for (int j = 0; j < i; j++)
                     if (X[i] != 0 && X[j] != 0)
-                        mixingSum += Program.chi[i, j] * XX[i] * XX[j] * X[i] * X[j] * Program.etas[i, j];
+                    {
+						if (i == 0 && j == 1)
+							mixingSum += (Program.chi[i, j] + Program.c * X[1] * X[1]) * XX[i] * XX[j] * X[i] * X[j] * Program.etas[i, j];
+						else
+							mixingSum += Program.chi[i, j] * XX[i] * XX[j] * X[i] * X[j] * Program.etas[i, j];
+
+					}
 
 			/*double b = chi[1, 2] * X[1] * X[2];
 			double c = chi[0, 1] * X[0] * X[1];
 			double d = chi[0, 2] * X[0] * X[2];*/
 			double output = translationSum + mixingSum;
+			entropyPart = translationSum;
+			mixingPart = mixingSum;
 			return output;
 		}
         public double CalculateExchangeChemialPotentialOfComponent(double[] X, int componenIndex)

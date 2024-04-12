@@ -73,6 +73,9 @@ namespace Polymer_brush
         }
         static void Main(string[] args)
         {
+            if (File.Exists("output.txt"))
+                File.Delete("output.txt");
+            outputWriter = new StreamWriter(File.Create("output.txt"));
             Dictionary<Input, string>tasks = LookingForInputFiles();
             foreach (Input task in tasks.Keys)
             {
@@ -80,14 +83,13 @@ namespace Polymer_brush
                 RunTask(task);
             }
             Console.WriteLine("All tasks are done");
+            outputWriter.Close();
             Console.ReadLine();
             
         }
         static void RunTask(Input task)
         {
-            if (File.Exists("output.txt"))
-                File.Delete("output.txt");
-            outputWriter = new StreamWriter(File.Create("output.txt"));
+            
             outputWriter.WriteLine();
             outputWriter.WriteLine();
             outputWriter.WriteLine();
@@ -102,7 +104,7 @@ namespace Polymer_brush
             
             Enter(task);
             OutputSettings(task);
-            CreateInputSettings();
+            //CreateInputSettings();
             Console.WriteLine("Initialization successful");
             CalculateMixingSurface(0.005, false);
             CalculateMixingSurface(0.005, true);
@@ -136,7 +138,8 @@ namespace Polymer_brush
 
             sw.WriteLine("y_cur    solvent    polymer    bio    osm_pressure");
 
-            List<KeyValuePair<double, List<double>>> profile = new List<KeyValuePair<double, List<double>>>();
+            List<KeyValuePair<double, ProfileInfo>> profile = new List<KeyValuePair<double, ProfileInfo>>();
+            
             Console.WriteLine("Calculating profile...");
             y_cur = 1;
             int numberOfPoints = 40;
@@ -144,9 +147,14 @@ namespace Polymer_brush
             //while (y_cur < y_edge)
             for (y_cur = 1 + stepInRelativeUnits; y_cur < y_edge; y_cur += stepInRelativeUnits)
             {
+                ProfileInfo info = new ProfileInfo();
                 Xbrush = new double[NumberOfComponents];
                 FindVolumeFractionsInTheBrushForPoint(out Xbrush, y_cur); //  !calculates concentration profile in the brush after the solution is found
-
+                info.polymerEquationError = brushEquationInfo.polymerEquationError;
+                info.polymerEquationMixingPart = brushEquationInfo.polymerEquationMixingPart;
+                info.polymerEquationStretchingPart = brushEquationInfo.polymerEquationStretchingPart;
+                info.mixingEnergyContributionToF = brushEquationInfo.mixingEnergyContributionToF;
+                info.entropyContributionToF = brushEquationInfo.entropyContributionToF;
 
                 for (int i = 0; i < NumberOfComponents; i++)
                 {
@@ -158,14 +166,13 @@ namespace Polymer_brush
                 Console.Write("u_bio=" + u_bio);
                 Console.Write("/n");
 
-                /*string line = y_cur.ToString() + "    ";
-                for (int i = 0; i < NumberOfComponents; i++)
-                    line += fipolimer[i] + "    ";
-                sw.WriteLine(line + (Osmmix(Program.NumberOfComponents, fipolimer) - osmbulk));*/
                 List<double> composition = new List<double>();
                 for (int i = 0; i < NumberOfComponents; i++)
                     composition.Add(fipolimer[i]);
-                profile.Add(new KeyValuePair<double, List<double>>(y_cur, composition));
+                
+                info.composition = composition;
+                profile.Add(new KeyValuePair<double, ProfileInfo>(y_cur, info));
+                
                 // y_cur += aA / R;
             }
             y_cur = y_min;
@@ -179,10 +186,10 @@ namespace Polymer_brush
                 {
                     y_cur = profile[i].Key;
                     double[] baseFractions = new double[2];
-                    baseFractions[0] = profile[i].Value[0];
-                    baseFractions[1] = profile[i].Value[1];
+                    baseFractions[0] = profile[i].Value.composition[0];
+                    baseFractions[1] = profile[i].Value.composition[1];
                     double additiveFraction = FindAdditiveConcentrationForParticularPolymerAndSolventContentInTheBrush(baseFractions);
-                    profile[i].Value.Add(additiveFraction);
+                    profile[i].Value.composition.Add(additiveFraction);
                 }
             }
             Console.WriteLine("");
@@ -190,13 +197,18 @@ namespace Polymer_brush
             outputWriter.WriteLine();
             outputWriter.WriteLine();
             outputWriter.WriteLine("///////////////////////////OUTPUT/////////////////////////////");
-            outputWriter.WriteLine("y_cur    solvent    polymer    bio    osm_pressure");
+            outputWriter.WriteLine("y_cur    solvent    polymer    bio    polymerEquationError    polymerEquationMixingPart    polymerEquationStretchingPart    mixingEnergyContributionToF    entropyContributionToF");
             for (int i = 0; i < profile.Count; i++)
             {
                 string line = profile[i].Key.ToString() + "    ";
-                for (int j = 0; j < profile[i].Value.Count; j++)
-                    line += profile[i].Value[j] + "    ";
-                sw.WriteLine(line + (Osmmix(Program.NumberOfComponents, fipolimer) - osmbulk));
+                for (int j = 0; j < profile[i].Value.composition.Count; j++)
+                    line += profile[i].Value.composition[j] + "    ";
+                line += profile[i].Value.polymerEquationError + "    ";
+                line += profile[i].Value.polymerEquationMixingPart + "    ";
+                line += profile[i].Value.polymerEquationStretchingPart + "    ";
+                line += profile[i].Value.mixingEnergyContributionToF + "    ";
+                line += profile[i].Value.entropyContributionToF + "    ";
+                sw.WriteLine(line);
                 outputWriter.WriteLine(line + (Osmmix(Program.NumberOfComponents, fipolimer) - osmbulk));
             }
 
@@ -211,7 +223,7 @@ namespace Polymer_brush
             outputWriter.WriteLine("**************************************************************");
             outputWriter.WriteLine("**************************************************************");
 
-            outputWriter.Close();
+            
         }
         static void ApplySettings(Input settings)
         {
@@ -929,6 +941,7 @@ namespace Polymer_brush
             return logString;
         }
         static double targetMixingPotential;
+        static ProfileInfo brushEquationInfo;
         static string BrushEquations(double[] X, out double[] F, int L)
         {
             string logString = "";
@@ -966,6 +979,13 @@ namespace Polymer_brush
 
             }
             //F[NumberOfComponents - 2] = Math.Pow((mixingPartOfExchangeChemicalPotentials[NumberOfComponents - 1] + BA * (R * (y_cur - 1.0)) * (R * (y_cur - 1.0)) - Lamb_Pol), 2);//!polymer error
+            brushEquationInfo = new ProfileInfo();
+            brushEquationInfo.polymerEquationError = F[0];
+            brushEquationInfo.polymerEquationMixingPart = mixingPartOfExchangeChemicalPotentials[1];
+            brushEquationInfo.polymerEquationStretchingPart = BA * (R * (y_cur - 1.0)) * (R * (y_cur - 1.0));
+            mixingPartModule.CalculateMixingFreeEnergy(fipolimer);
+            brushEquationInfo.entropyContributionToF = mixingPartModule.entropyPart;
+            brushEquationInfo.mixingEnergyContributionToF = mixingPartModule.mixingPart;
 
             string line = "";
             for (int i = 0; i < F.Length; i++)
@@ -1164,5 +1184,14 @@ namespace Polymer_brush
             return x1 + ";" + x2 + ";" + x3 + ";";
         }
     }
-
+    public class ProfileInfo
+    {
+        public List<double> composition = new List<double>();
+        public List<double> additiveEquationError = new List<double>();
+        public double polymerEquationError;
+        public double polymerEquationStretchingPart;
+        public double polymerEquationMixingPart;
+        public double mixingEnergyContributionToF;
+        public double entropyContributionToF;
+    }
 }
