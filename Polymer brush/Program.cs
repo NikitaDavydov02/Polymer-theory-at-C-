@@ -30,6 +30,7 @@ namespace Polymer_brush
         public static int chiMatrixSize;
         public static double maxSigma;
         public static double areaDensityDegree = 1;
+        static double actualSigma;
 
         static double[] Xbrush, fipolimer;
         static double point_y;
@@ -111,7 +112,7 @@ namespace Polymer_brush
             if (calculationMode == CalculationMode.InfinitlyDelute)
                 SwitchToInfinitlyDeluteMode();
 
-            //////////////////////////////////////////////////////////////////
+            /////////////////////////////////////////////////////////////////////
             /////////////////////////////////////////////////////////////////////
             List<KeyValuePair<double, List<double>>> mixingEnergy = CalculateMixingEnergyProfile(1, 0, 20);
             using (StreamWriter sw = new StreamWriter("mixingFenergyOfSolventAndPolymer.txt"))
@@ -121,7 +122,7 @@ namespace Polymer_brush
                     sw.WriteLine(pair.Key + "  ;  " + pair.Value[0] + ";" + pair.Value[1] + ";");
                 }
             }
-            //////////////////////////////////////////////////////////////////
+            /////////////////////////////////////////////////////////////////////
             /////////////////////////////////////////////////////////////////////
             //return;
             sw = new StreamWriter("profile.txt");
@@ -384,8 +385,8 @@ namespace Polymer_brush
             UploadDefaultSettings();
             ApplySettings(input);
             ////////////////////////////////////
-            maxSigma = R / (3 * rNB * aA * aA * aA);
-            double actualSigma = maxSigma * areaDensityDegree;
+            maxSigma = 1 / (aA * aA);
+            actualSigma = maxSigma * areaDensityDegree;
             areaPerChain = 1 / actualSigma;
             y_min = 1.0 + aA / R;
             y_max = 1.00001 * (1.0 + 1.0 * aA * rNA / R);                 //y_max = 1.0d0 * (1.0d0 + 2.0 * aA * rNA / R)
@@ -480,6 +481,7 @@ namespace Polymer_brush
 
             double nu = 2.0;
             double norm = rNA / (rNB * (nu + 1.0));
+            norm = actualSigma * rNA * aA * aA * aA / R;
             double integrationMin = 1.0;
             double integrationMax = y;
             double s = 1;
