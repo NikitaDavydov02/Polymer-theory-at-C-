@@ -521,8 +521,11 @@ namespace Polymer_brush
             //this is the fraction of solvent at the border
             //XBorderGUESS[1]= volumeFractionsInTheBulk[1];//this is the fraction of biocomponnt at the border
            
-            XBorderGUESS[0] = 0.01;
-            
+            if(c==0.0)
+                XBorderGUESS[0] = 0.01;
+            else
+                XBorderGUESS[0] = 1;
+
             double FNORM;
             double[] _XBorder = new double[NumberOfComponents-1];
             DNEQNF(BorderEquations, ERREL, NumberOfComponents - 1, 1000, XBorderGUESS, out _XBorder, out FNORM);
@@ -1099,7 +1102,7 @@ namespace Polymer_brush
             while (volumeFractions[AcomponentIndex] < 1)
             {
                 List<double> value = new List<double>();
-                double Fmix = mixingPartModule.CalculateMixingFreeEnergy(volumeFractions);
+                double Fmix = mixingPartModule.CalculateMixingFreeEnergy(volumeFractions, false);
                 double osmotic = CalculateOsmoticPressure(volumeFractions);
                 double[] exchangeChemPotentials;
                 Lagrmix(NumberOfComponents, volumeFractions, out exchangeChemPotentials);
