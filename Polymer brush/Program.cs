@@ -117,9 +117,11 @@ namespace Polymer_brush
             List<KeyValuePair<double, List<double>>> mixingEnergy = CalculateMixingEnergyProfile(1, 0, 20);
             using (StreamWriter sw = new StreamWriter("mixingFenergyOfSolventAndPolymer.txt"))
             {
+                sw.WriteLine("x_pol; Fmix; mixChemPot1; osmotic pressure");
+
                 foreach (KeyValuePair<double, List<double>> pair in mixingEnergy)
                 {
-                    sw.WriteLine(pair.Key + "  ;  " + pair.Value[0] + ";" + pair.Value[1] + ";");
+                    sw.WriteLine(pair.Key + "  ;  " + pair.Value[0] + ";" + pair.Value[1] + ";" + pair.Value[2] + ";");
                 }
             }
             /////////////////////////////////////////////////////////////////////
@@ -183,6 +185,16 @@ namespace Polymer_brush
                 Console.WriteLine("*************************");
                 Console.WriteLine("*************************");
                 Console.WriteLine("Finding additive concentration in infinitly delute solution approximation...");
+                Console.WriteLine("Raw profile");
+                for (int i = 0; i < profile.Count; i++)
+                {
+                    string line = profile[i].Key.ToString() + "    ";
+                    for (int j = 0; j < profile[i].Value.composition.Count; j++)
+                        line += profile[i].Value.composition[j] + "    ";
+                    Console.WriteLine(line);
+                }
+                Console.WriteLine("*************************");
+                Console.WriteLine("*************************");
                 for (int i = 0; i < profile.Count; i++)
                 {
                     y_cur = profile[i].Key;
@@ -241,8 +253,8 @@ namespace Polymer_brush
             rNA = polymer.NouterSegments;
             rNB = rN - rNA;
             R = settings.Radius;
-            if (R > aA * rNB && nu == 2)
-                throw new Exception("These chains are too short to fill the core");
+            //if (R > aA * rNB && nu == 2)
+            //    throw new Exception("These chains are too short to fill the core");
             if (settings.geometry == Geometry.Sphere)
                 nu = 2;
             areaDensityDegree = settings.DensityDegree;
@@ -399,7 +411,7 @@ namespace Polymer_brush
             etas = new double[chiMatrixSize, chiMatrixSize];
             for (int i = 0; i < chiMatrixSize; i++)
                 for (int j = 0; j < chiMatrixSize; j++)
-                    etas[i, j] = Math.Exp(-3 * chi[i, j] / z);
+                    etas[i, j] = Math.Exp(- chi[i, j] / z);
             ////////////////////////////////////
 
             if (mixingPartModuleCopy == null)
@@ -527,6 +539,8 @@ namespace Polymer_brush
                 }
             }
             volFractionsAtTheBorder[1] = 1 - volumeFractionSum;
+            if (Math.Abs(y - 2.1090170383707827) < 0.0000000001)
+                ;
             Lagrmix_PolA(NumberOfComponents, volFractionsAtTheBorder, out chemPotAtTheBorder);
 
             double mixingChemPotAtTheBorder = chemPotAtTheBorder[1];
@@ -551,7 +565,12 @@ namespace Polymer_brush
 
                 if (n > 4)
                     if (Math.Abs(s - old_s) < EPS * Math.Abs(old_s) || (s == 0 && old_s == 0))
+                    {
+                        //integralLogWriter.Close();
+                        if(Math.Abs(integrationMax- 2.1090170383707827)<0.0000000001)
+                             integralLogWriter.Close();
                         return;
+                    }
                 old_s = s;
             }
             Console.WriteLine("Too many steps in q trap");
@@ -608,7 +627,8 @@ namespace Polymer_brush
         static double NormalizationSubintegralValue(double x, List<double> parameters)
         {
             //Lamb_Pol = chemPotInTheBulk[2] + BA * (R * (  - 1)) * (R * (  - 1));
-            
+            if (Math.Abs(x - 2.1090170383707827) < 0.0000000001)
+                ;
             FindVolumeFractionsInTheBrushForPoint(out Xbrush, x);
             func_log = Xbrush[1].ToString()+"_;";
             
@@ -834,8 +854,8 @@ namespace Polymer_brush
                 realComposition[0] = 1 - sum;
                 double segregationDelta;
                 double[] firstSegregationPoint;
-                double[] secondSegregationPoint;
-                if (mixingPartModule.IsCompositionInsideSegregationZone(realComposition, out segregationDelta, out firstSegregationPoint, out secondSegregationPoint))
+                double[] secondSegregationPoint = null;
+                if (Func.Method.Name!= "InfinitlyDeluteAdditivesEquations" && mixingPartModule.IsCompositionInsideSegregationZone(realComposition, out segregationDelta, out firstSegregationPoint, out secondSegregationPoint))
                 {
                     if (NumberOfComponents != 2)
                         throw new NotImplementedException();
@@ -1065,10 +1085,12 @@ namespace Polymer_brush
             {
                 List<double> value = new List<double>();
                 double Fmix = mixingPartModule.CalculateMixingFreeEnergy(volumeFractions);
+                double osmotic = CalculateOsmoticPressure(volumeFractions);
                 double[] exchangeChemPotentials;
                 Lagrmix(NumberOfComponents, volumeFractions, out exchangeChemPotentials);
                 value.Add(Fmix);
                 value.Add(exchangeChemPotentials[1]);
+                value.Add(osmotic);
                 output.Add(new KeyValuePair<double, List<double>>(volumeFractions[AcomponentIndex], value));
                 volumeFractions[AcomponentIndex] += step;
                 volumeFractions[BcomponentIndex] = 1 - volumeFractions[AcomponentIndex];
