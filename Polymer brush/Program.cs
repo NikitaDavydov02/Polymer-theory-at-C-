@@ -150,6 +150,8 @@ namespace Polymer_brush
             //while (y_cur < y_edge)
             for (y_cur = 1 + stepInRelativeUnits; y_cur < y_edge; y_cur += stepInRelativeUnits)
             {
+                if (Math.Abs(y_cur - 1.02927256377978) < 0.000001)
+                    ;
                 ProfileInfo info = new ProfileInfo();
                 Xbrush = new double[NumberOfComponents];
                 FindVolumeFractionsInTheBrushForPoint(out Xbrush, y_cur); //  !calculates concentration profile in the brush after the solution is found
@@ -854,31 +856,31 @@ namespace Polymer_brush
                 }
                 realComposition[0] = 1 - sum;
                 double segregationDelta;
-                double[] firstSegregationPoint;
-                double[] secondSegregationPoint = null;
+                //double[] firstSegregationPoint;
+                //double[] secondSegregationPoint = null;
                 if(Func.Method.Name == "BorderEquations")
                 {
                     double[] composition = new double[2];
                     composition[0] = X[0];
                     composition[1] = 1 - composition[0];
-                    bool inside = mixingPartModule.IsCompositionInsideSegregationZone(composition, out segregationDelta, out firstSegregationPoint, out secondSegregationPoint);
+                    bool inside = mixingPartModule.IsCompositionInsideSegregationZone(composition, out segregationDelta);
                     if (inside)
                     {
-                        X[0] = secondSegregationPoint[0] - 0.0000001;
+                        X[0] = mixingPartModule.Nodes[0].secondComposition[1] - 0.0000001;
                         newthonWriter.WriteLine("Split");
                         newthonWriter.Close();
                         return;
                     }
                 }
-                if (Func.Method.Name== "BrushEquations" && mixingPartModule.IsCompositionInsideSegregationZone(realComposition, out segregationDelta, out firstSegregationPoint, out secondSegregationPoint))
+                if (Func.Method.Name== "BrushEquations" && mixingPartModule.IsCompositionInsideSegregationZone(realComposition, out segregationDelta))
                 {
                     if (NumberOfComponents != 2)
                         throw new NotImplementedException();
                     //Split
                     if (deltaX[0] > 0)
-                        X[0] = secondSegregationPoint[1] + 0.01;
+                        X[0] = mixingPartModule.Nodes[0].secondComposition[1] + 0.01;
                     if (deltaX[0] < 0)
-                        X[0] = firstSegregationPoint[1] - 0.1;
+                        X[0] = mixingPartModule.Nodes[0].firstComposition[1] - 0.1;
                     splitTransitions++;
                 }
                 /*if(X[0]>=mixingPartModule.segregationPoints[0]&& X[0]<= mixingPartModule.segregationPoints[1])
@@ -904,7 +906,7 @@ namespace Polymer_brush
                         if (NumberOfComponents != 2)
                             throw new NotImplementedException();
                         //X[0] = firstSegregationPoint[1];
-                        X[0] = secondSegregationPoint[1];
+                        X[0] = mixingPartModule.Nodes[0].secondComposition[1];
                         return;
                     }
                     else
@@ -1102,7 +1104,9 @@ namespace Polymer_brush
             while (volumeFractions[AcomponentIndex] < 1)
             {
                 List<double> value = new List<double>();
-                double Fmix = mixingPartModule.CalculateMixingFreeEnergy(volumeFractions, false);
+                if (volumeFractions[AcomponentIndex] > 0.9506)
+                    ;
+                double Fmix = mixingPartModule.CalculateMixingFreeEnergy(volumeFractions);
                 double osmotic = CalculateOsmoticPressure(volumeFractions);
                 double[] exchangeChemPotentials;
                 Lagrmix(NumberOfComponents, volumeFractions, out exchangeChemPotentials);
