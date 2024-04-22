@@ -76,6 +76,8 @@ namespace Polymer_brush
         {
             if (File.Exists("output.txt"))
                 File.Delete("output.txt");
+           
+
             outputWriter = new StreamWriter(File.Create("output.txt"));
             Dictionary<Input, string>tasks = LookingForInputFiles();
             foreach (Input task in tasks.Keys)
@@ -84,9 +86,9 @@ namespace Polymer_brush
                 RunTask(task);
             }
             Console.WriteLine("All tasks are done");
+            //RunTask(null);
             outputWriter.Close();
             Console.ReadLine();
-            
         }
         static void RunTask(Input task)
         {
@@ -102,10 +104,10 @@ namespace Polymer_brush
             double u_bio = 0;
             calculationMode = CalculationMode.InfinitlyDelute;
             //ReadSettings();
-            
+
             Enter(task);
             OutputSettings(task);
-            //CreateInputSettings();
+
             Console.WriteLine("Initialization successful");
             CalculateMixingSurface(0.005, false);
             CalculateMixingSurface(0.005, true);
@@ -212,10 +214,11 @@ namespace Polymer_brush
             outputWriter.WriteLine();
             outputWriter.WriteLine();
             outputWriter.WriteLine("///////////////////////////OUTPUT/////////////////////////////");
-            outputWriter.WriteLine("y_cur    solvent    polymer    bio    polymerEquationError    polymerEquationMixingPart    polymerEquationStretchingPart    mixingEnergyContributionToF    entropyContributionToF");
+            outputWriter.WriteLine("y_cur,nm    y_cur    solvent    polymer    bio    polymerEquationError    polymerEquationMixingPart    polymerEquationStretchingPart    mixingEnergyContributionToF    entropyContributionToF");
             for (int i = 0; i < profile.Count; i++)
             {
-                string line = profile[i].Key.ToString() + "    ";
+                string line = ((profile[i].Key-1)*R*Math.Pow(10,9)) + "    ";
+                line+= profile[i].Key.ToString() + "    ";
                 for (int j = 0; j < profile[i].Value.composition.Count; j++)
                     line += profile[i].Value.composition[j] + "    ";
                 line += profile[i].Value.polymerEquationError + "    ";
@@ -421,6 +424,11 @@ namespace Polymer_brush
             else
                 mixingPartModule = mixingPartModuleCopy;
 
+            if (NumberOfComponents == 3)
+            {
+                if (volumeFractionsInTheBulk[0] + volumeFractionsInTheBulk[1]+volumeFractionsInTheBulk[2] != 0)
+                    volumeFractionsInTheBulk[0] = 1 - volumeFractionsInTheBulk[1] - volumeFractionsInTheBulk[2];
+            }
             Lagrmix(NumberOfComponents, volumeFractionsInTheBulk, out chemPotInTheBulk);
            
         }
@@ -495,7 +503,8 @@ namespace Polymer_brush
 
             double nu = 2.0;
             double norm = rNA / (rNB * (nu + 1.0));
-            norm = actualSigma * rNA * aA * aA * aA / R;
+            //norm = actualSigma * rNA * aA * aA * aA / R;
+            norm = (aA / R) * rNA * areaDensityDegree;
             double integrationMin = 1.0;
             double integrationMax = y;
             y_cur = y;
@@ -866,7 +875,7 @@ namespace Polymer_brush
                     bool inside = mixingPartModule.IsCompositionInsideSegregationZone(composition, out segregationDelta);
                     if (inside)
                     {
-                        X[0] = mixingPartModule.Nodes[0].secondComposition[1] - 0.0000001;
+                        X[0] = mixingPartModule.Nodes[0].secondComposition[0] - 0.0000001;
                         newthonWriter.WriteLine("Split");
                         newthonWriter.Close();
                         return;
@@ -1129,10 +1138,11 @@ namespace Polymer_brush
             compositionAtTheBaseBrush[0] = SolventAndPolymerFractions[0];
             compositionAtTheBaseBrush[1] = SolventAndPolymerFractions[1];
             compositionAtTheBaseBrush[2] =0;
-            
+
             //Lagrmix_PolA(NumberOfComponents, compositionAtTheBaseBrush, out chemPotAtTheBaseBrush);
 
-            double ERREL = Math.Pow(10, -2) * volumeFractionsInTheBulk[2];
+            //double ERREL = Math.Pow(10, -2) * volumeFractionsInTheBulk[2];
+            double ERREL = Math.Pow(10, -6);
             int ITMAX = 600;
             double[] tryAdditive = new double[] { volumeFractionsInTheBulk[2] };
             double[] additiveConcentrations;
