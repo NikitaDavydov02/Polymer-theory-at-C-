@@ -111,7 +111,7 @@ namespace Polymer_brush
 				if (IsCompositionInsideSegregationZone(X, out segreagationF))
 					return segreagationF;
 			}
-            return CalculateFloryMixingFreeEnergy(X);
+            //return CalculateFloryMixingFreeEnergy(X);
             return CalculateGugenheimMixingFreeEnergy(X);
 
         }
@@ -335,7 +335,7 @@ namespace Polymer_brush
 				FindSegregationPointsBetweenSolventAndPolymerAtPresenceOfAdditive(0);
             else
             {
-				for (double Xadditive = 0; Xadditive < 0.2; Xadditive += 0.01)
+				for (double Xadditive = 0; Xadditive < 0.05; Xadditive += 0.01)
 				{
 					FindSegregationPointsBetweenSolventAndPolymerAtPresenceOfAdditive(Xadditive);
 				}

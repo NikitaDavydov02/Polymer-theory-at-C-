@@ -83,7 +83,16 @@ namespace Polymer_brush
             foreach (Input task in tasks.Keys)
             {
                 string outputPath = tasks[task];
-                RunTask(task);
+                try
+                {
+                    RunTask(task);
+                }
+                catch(Exception ex)
+                {
+                    outputWriter.WriteLine("Task aborted due to error: ");
+                    outputWriter.WriteLine(ex.Message);
+                    Console.WriteLine("Task aborted");
+                }
             }
             Console.WriteLine("All tasks are done");
             //RunTask(null);
@@ -107,6 +116,10 @@ namespace Polymer_brush
 
             Enter(task);
             OutputSettings(task);
+            //COMMENT IT
+            //CreateInputSettings();
+            //return;
+            //COMMENT IT
 
             Console.WriteLine("Initialization successful");
             CalculateMixingSurface(0.005, false);
@@ -357,7 +370,7 @@ namespace Polymer_brush
             areaDensityDegree = 1;
 
             NumberOfComponents = 3;
-            NumberOfPolymerGroupTypes = 1;
+            NumberOfPolymerGroupTypes = 2;
 
             
 
@@ -386,6 +399,7 @@ namespace Polymer_brush
             for (int i = 0; i < NumberOfPolymerGroupTypes; i++)
                 fractionsOfGroups[i] = 0.1;
             fractionsOfGroups[0] = 1;
+            fractionsOfGroups[1] = 0;
 
             volumeFractionsInTheBulk = new double[NumberOfComponents];
             for (int i = 0; i < NumberOfComponents; i++)
