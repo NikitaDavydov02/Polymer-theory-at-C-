@@ -111,7 +111,7 @@ namespace Polymer_brush
 				if (IsCompositionInsideSegregationZone(X, out segreagationF))
 					return segreagationF;
 			}
-            //return CalculateFloryMixingFreeEnergy(X);
+            return CalculateFloryMixingFreeEnergy(X);
             return CalculateGugenheimMixingFreeEnergy(X);
 
         }
@@ -184,7 +184,7 @@ namespace Polymer_brush
 			mixingPart = mixingSum;
 			return output;
 		}
-        public double CalculateExchangeChemialPotentialOfComponent(double[] X, int componenIndex)
+        public double CalculateExchangeChemialPotentialOfComponent(double[] X, int componenIndex, bool smallConc=true)
 		{
 			double relativeDelta = Math.Pow(10, -2);
 			double f0 = CalculateMixingFreeEnergy(X);
@@ -195,6 +195,8 @@ namespace Polymer_brush
 			double dx = relativeDelta * x;
 			if (dx == 0)
 				dx = relativeDelta;
+			if (smallConc && dx < Math.Pow(10, -12))
+				dx = Math.Pow(10, -12);
 			if (dx > max_dx)
 			{
                 dx = max_dx / 2;

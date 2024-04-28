@@ -89,9 +89,17 @@ namespace Polymer_brush
                 }
                 catch(Exception ex)
                 {
-                    outputWriter.WriteLine("Task aborted due to error: ");
+                    outputWriter.WriteLine("Task is aborted due to error: ");
                     outputWriter.WriteLine(ex.Message);
-                    Console.WriteLine("Task aborted");
+                    Console.WriteLine("Task is aborted");
+                    Console.WriteLine("ERROR: " + ex.Message);
+                    sw.Close();
+                    newthonWriter.Close();
+                    integralLogWriter.Close();
+                  /*  static StreamWriter sw;
+                    static StreamWriter newthonWriter;
+                    static StreamWriter integralLogWriter;
+                    static StreamWriter outputWriter;*/
                 }
             }
             Console.WriteLine("All tasks are done");
@@ -160,7 +168,7 @@ namespace Polymer_brush
             
             Console.WriteLine("Calculating profile...");
             y_cur = 1;
-            int numberOfPoints = 40;
+            int numberOfPoints = 100;
             double stepInRelativeUnits = (y_edge - 1) / numberOfPoints;
             //while (y_cur < y_edge)
             for (y_cur = 1 + stepInRelativeUnits; y_cur < y_edge; y_cur += stepInRelativeUnits)
@@ -218,7 +226,11 @@ namespace Polymer_brush
                     double[] baseFractions = new double[2];
                     baseFractions[0] = profile[i].Value.composition[0];
                     baseFractions[1] = profile[i].Value.composition[1];
-                    double additiveFraction = FindAdditiveConcentrationForParticularPolymerAndSolventContentInTheBrush(baseFractions);
+                    //double additiveFraction = FindAdditiveConcentrationForParticularPolymerAndSolventContentInTheBrush(baseFractions);
+                    double error = volumeFractionsInTheBulk[2] * 0.01;
+                    error = Math.Pow(10, -17);
+                    double additiveFraction = BisectionSolve(Math.Pow(10, -18), 0.9, error, InfinitlyDeluteAdditivesEquationsForBisectionSolve, new List<double> { baseFractions[0], baseFractions[1] });
+
                     profile[i].Value.composition.Add(additiveFraction);
                 }
             }
@@ -420,6 +432,8 @@ namespace Polymer_brush
             actualSigma = maxSigma * areaDensityDegree;
             areaPerChain = 1 / actualSigma;
             y_min = 1.0 + aA / R;
+            if (y_min > 1.01)
+                y_min = 1.01;
             y_max = 1.00001 * (1.0 + 1.0 * aA * rNA / R);                 //y_max = 1.0d0 * (1.0d0 + 2.0 * aA * rNA / R)
             yacc = Math.Pow(10, -8);
             BA = coe / ((rNA * aA) * (rNA * aA));
@@ -1184,6 +1198,24 @@ namespace Polymer_brush
             for (int i = 0; i < L; i++)
                 F[i] = (chemPotInTheComplementaryBrush[i + 2] - chemPotInTheBulk[i + 2]);
             return logString;
+        }
+        static double InfinitlyDeluteAdditivesEquationsForBisectionSolve(double xAdditive, List<double> parameters)
+        {
+            Console.WriteLine("Infinitly delute additive equation (Bisection solve)");
+            //X - only additives
+            string logString = "";
+            //double nu = 2;
+            //double y_cur = point_y;
+
+            double[] tryComposition = new double[NumberOfComponents];
+            tryComposition[0] = (1 - xAdditive) * parameters[0];
+            tryComposition[1] = (1 - xAdditive) * parameters[1];
+            tryComposition[2] = xAdditive;
+            //!Calculate values that in ideal case must be equal to Lagrangian multipliers based on current concentrations
+            double[] chemPotInTheComplementaryBrush;
+            Lagrmix_PolA(NumberOfComponents, tryComposition, out chemPotInTheComplementaryBrush);
+            double output = (chemPotInTheComplementaryBrush[2] - chemPotInTheBulk[2]);
+            return output;
         }
         static void OutputSettings(Input settings)
         {
