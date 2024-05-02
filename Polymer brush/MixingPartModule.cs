@@ -147,7 +147,12 @@ namespace Polymer_brush
 					if(j>i && X[i] != 0	&& X[j] != 0)
 					{
 						if(i==0&&j==1)
-                            b += (Program.chi[i, j] + Program.c * X[1] * X[1]) * X[i] * X[j];
+                        {
+							//b += (Program.chi[i, j] + Program.c * X[1] * X[1]) * X[i] * X[j];
+							double x1 = 0;
+							//b += (Program.chi[i, j] + x1* X[1] + Program.c * X[1] * X[1]) *X[i] * X[j];
+							b += (Program.chi[i, j] + Program.c * X[1]) * X[i] * X[j];
+						}
 						else
 							b += Program.chi[i, j] * X[i] * X[j];
                     }
