@@ -392,7 +392,7 @@ namespace Polymer_brush
 
             size[0] = 1.0;// ! solvent
             size[1] = rNA;// polymer
-            size[2] = 3.0;// bio
+            size[2] = 3.0;// bio//
 
             chi = new double[MaxNumberOfComponent, MaxNumberOfComponent];
             chiMatrixSize = NumberOfComponents + NumberOfPolymerGroupTypes - 1;
