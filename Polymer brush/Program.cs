@@ -117,10 +117,10 @@ namespace Polymer_brush
             outputWriter.WriteLine();
             outputWriter.WriteLine("/////////////////////////////////////////////////////////////");
             mixingPartModuleCopy = null;
-            double Fmix = 0;
+           /* double Fmix = 0;
             double u_sol = 0;
             double u_pol = 0;
-            double u_bio = 0;
+            double u_bio = 0;*/
             //calculationMode = CalculationMode.InfinitlyDelute;
             //ReadSettings();
 
@@ -128,7 +128,7 @@ namespace Polymer_brush
             if (volumeFractionsInTheBulk[2] <= 0.001)
                 calculationMode = CalculationMode.InfinitlyDelute;
             else
-                calculationMode = CalculationMode.Usual;
+                calculationMode = CalculationMode.Usual;s
             OutputSettings(task);
             //COMMENT IT
             //CreateInputSettings();

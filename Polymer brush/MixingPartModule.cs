@@ -9,7 +9,7 @@ namespace Polymer_brush
 {
     class MixingPartModule
     {
-		bool correlation = true;
+		bool correlation = false;
 		//public double[] segregationPoints { get; private set; }
 		//public double[] segregationMixingEnergies;
 
