@@ -74,6 +74,7 @@ namespace Polymer_brush
         }
         static void Main(string[] args)
         {
+            
             if (File.Exists("output.txt"))
                 File.Delete("output.txt");
            
@@ -120,10 +121,14 @@ namespace Polymer_brush
             double u_sol = 0;
             double u_pol = 0;
             double u_bio = 0;
-            calculationMode = CalculationMode.InfinitlyDelute;
+            //calculationMode = CalculationMode.InfinitlyDelute;
             //ReadSettings();
 
             Enter(task);
+            if (volumeFractionsInTheBulk[2] <= 0.001)
+                calculationMode = CalculationMode.InfinitlyDelute;
+            else
+                calculationMode = CalculationMode.Usual;
             OutputSettings(task);
             //COMMENT IT
             //CreateInputSettings();
@@ -133,6 +138,8 @@ namespace Polymer_brush
             Console.WriteLine("Initialization successful");
             CalculateMixingSurface(0.005, false);
             CalculateMixingSurface(0.005, true);
+
+            
             if (calculationMode == CalculationMode.InfinitlyDelute)
                 SwitchToInfinitlyDeluteMode();
 
@@ -205,7 +212,10 @@ namespace Polymer_brush
                 // y_cur += aA / R;
             }
             y_cur = y_min;
-            double additiveNumberOfMollecules=0;
+            double additiveNumberOfMollecules=0; 
+            double additiveTotalVolume = 0;
+            double additiveFraction = 0;
+            double additiveNumberOfCellsAccupied;
             if (calculationMode == CalculationMode.InfinitlyDelute)
             {
                 Enter(task);
@@ -222,7 +232,7 @@ namespace Polymer_brush
                 }
                 Console.WriteLine("*************************");
                 Console.WriteLine("*************************");
-                double additiveTotalVolume = 0;
+                
                 for (int i = 0; i < profile.Count; i++)
                 {
                     y_cur = profile[i].Key;
@@ -232,14 +242,26 @@ namespace Polymer_brush
                     //double additiveFraction = FindAdditiveConcentrationForParticularPolymerAndSolventContentInTheBrush(baseFractions);
                     double error = volumeFractionsInTheBulk[2] * 0.01;
                     error = Math.Pow(10, -17);
-                    double additiveFraction = BisectionSolve(Math.Pow(10, -18), 0.9, error, InfinitlyDeluteAdditivesEquationsForBisectionSolve, new List<double> { baseFractions[0], baseFractions[1] });
+                    additiveFraction = BisectionSolve(Math.Pow(10, -18), 0.9, error, InfinitlyDeluteAdditivesEquationsForBisectionSolve, new List<double> { baseFractions[0], baseFractions[1] });
 
                     profile[i].Value.composition.Add(additiveFraction);
                     additiveTotalVolume += (stepInRelativeUnits * R) * 4 * 3.1415 * (y_cur * R) * (y_cur * R) * additiveFraction;
                 }
-                double additiveNumberOfCellsAccupied = additiveTotalVolume / (aA * aA * aA);
-                additiveNumberOfMollecules = additiveNumberOfCellsAccupied / size[2];
+                
             }
+            else
+            {
+                for (int i = 0; i < profile.Count; i++)
+                {
+                    y_cur = profile[i].Key;
+                    additiveFraction = profile[i].Value.composition[2];
+                    additiveTotalVolume += (stepInRelativeUnits * R) * 4 * 3.1415 * (y_cur * R) * (y_cur * R) * additiveFraction;
+                   
+
+                }
+            }
+            additiveNumberOfCellsAccupied = additiveTotalVolume / (aA * aA * aA);
+            additiveNumberOfMollecules = additiveNumberOfCellsAccupied / size[2];
             Console.WriteLine("");
             Console.WriteLine("Output");
             outputWriter.WriteLine();
@@ -268,6 +290,7 @@ namespace Polymer_brush
 
             sw.Close();
             outputWriter.WriteLine("Adsorbed molecules: " + additiveNumberOfMollecules);
+            outputWriter.WriteLine("Adsorbtion (mol/m2): " + (additiveNumberOfMollecules/(6.02*Math.Pow(10,23)))/(4*3.1415*R*R));
             outputWriter.WriteLine("/////////////////////////////////////////////////////////////");
             outputWriter.WriteLine("**************************************************************");
             outputWriter.WriteLine("**************************************************************");
@@ -442,7 +465,9 @@ namespace Polymer_brush
             y_min = 1.0 + aA / R;
             if (y_min > 1.01)
                 y_min = 1.01;
-            y_max = 1.00001 * (1.0 + 1.0 * aA * rNA / R);                 //y_max = 1.0d0 * (1.0d0 + 2.0 * aA * rNA / R)
+            y_max = 1.00001 * (1.0 + 1.0 * aA * rNA / R);
+            //y_max /= 2;
+            //y_max = 1.0d0 * (1.0d0 + 2.0 * aA * rNA / R)
             yacc = Math.Pow(10, -8);
             BA = coe / ((rNA * aA) * (rNA * aA));
             chemPotInTheBulk = new double[NumberOfComponents];
@@ -553,8 +578,8 @@ namespace Polymer_brush
             //chemPotAtTheBorder[0] = chemPotInTheBulk[0];//solvent
             //chemPotAtTheBorder[1] = chemPotInTheBulk[1];//bio
             //Finding volume fractions at the border
-            double ERREL = Math.Pow(10, -6);
-            //double ERREL = Math.Pow(10, -4);
+            double ERREL = Math.Pow(10, -3);
+            //double ERREL = Math.Pow(10, -6);
 
             double[] XBorderGUESS = new double[NumberOfComponents - 1];//Everything except polymer
 
@@ -568,11 +593,11 @@ namespace Polymer_brush
             //this is the fraction of solvent at the border
             //XBorderGUESS[1]= volumeFractionsInTheBulk[1];//this is the fraction of biocomponnt at the border
            
-            if(c==0.0)
+            /*if(c==0.0)
                 XBorderGUESS[0] = 0.01;
             else
                 XBorderGUESS[0] = 1;
-            //XBorderGUESS[0] = 0.01;
+            */
 
             double FNORM;
             double[] _XBorder = new double[NumberOfComponents-1];
@@ -823,6 +848,8 @@ namespace Polymer_brush
             double[,] J = new double[L, XGuess.Length];
             while (FNORM >= ERREL)
             {
+                if (Math.Abs(X[0] - 1.6474105548497705E-15) < Math.Pow(10, -15))
+                    ;
                 //Calculate Jacobian
                 for (int i = 0; i < L; i++)
                     for (int j = 0; j < X.Length; j++)
@@ -831,6 +858,8 @@ namespace Polymer_brush
                         double f_init = F[i];
                         double old_x = X[j];
                         double dx = old_x * 0.01;
+                        if (dx < Math.Pow(10, -10))
+                            dx = Math.Pow(10, -10);
                         X[j] += dx;
 
 
@@ -926,8 +955,11 @@ namespace Polymer_brush
                 }
                 if (Func.Method.Name== "BrushEquations" && mixingPartModule.IsCompositionInsideSegregationZone(realComposition, out segregationDelta))
                 {
-                    if (NumberOfComponents != 2)
+                    /*if (NumberOfComponents != 2)
+                    {
+                        newthonWriter.Close();
                         throw new NotImplementedException();
+                    }*/
                     //Split
                     if (deltaX[0] > 0)
                     {
@@ -987,6 +1019,7 @@ namespace Polymer_brush
                     else*/
                     {
                         newthonWriter.Close();
+                        return;
                         integralLogWriter.Close();
                         throw new Exception(" Newton method did not manage to find solution for system of equations");
 
@@ -1016,9 +1049,15 @@ namespace Polymer_brush
         }
         static bool ContainsOutrangeValues(double[] X)
         {
+
             foreach (double x in X)
                 if (x < 0 || x > 1)
                     return true;
+            double sum = 0;
+            foreach (double x in X)
+                sum += x;
+            if (sum > 1)
+                return true;
             return false;
         }
         static string BorderEquations(double[] X, out double[] F, int L)
@@ -1260,6 +1299,7 @@ namespace Polymer_brush
             if (settings == null)
                 return;
             outputWriter.WriteLine("///////////////////////////INPUT////////////////////////////");
+            outputWriter.WriteLine("Calculation mode: " + calculationMode);
             outputWriter.WriteLine("Number of components: " + settings.Components.Count);
 
             Component polymer = null;
