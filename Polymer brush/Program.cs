@@ -83,6 +83,7 @@ namespace Polymer_brush
             foreach (Input task in tasks.Keys)
             {
                 string outputPath = tasks[task];
+                //RunTask(task);
                 try
                 {
                     RunTask(task);
@@ -204,6 +205,7 @@ namespace Polymer_brush
                 // y_cur += aA / R;
             }
             y_cur = y_min;
+            double additiveNumberOfMollecules=0;
             if (calculationMode == CalculationMode.InfinitlyDelute)
             {
                 Enter(task);
@@ -220,6 +222,7 @@ namespace Polymer_brush
                 }
                 Console.WriteLine("*************************");
                 Console.WriteLine("*************************");
+                double additiveTotalVolume = 0;
                 for (int i = 0; i < profile.Count; i++)
                 {
                     y_cur = profile[i].Key;
@@ -232,7 +235,10 @@ namespace Polymer_brush
                     double additiveFraction = BisectionSolve(Math.Pow(10, -18), 0.9, error, InfinitlyDeluteAdditivesEquationsForBisectionSolve, new List<double> { baseFractions[0], baseFractions[1] });
 
                     profile[i].Value.composition.Add(additiveFraction);
+                    additiveTotalVolume += (stepInRelativeUnits * R) * 4 * 3.1415 * (y_cur * R) * (y_cur * R) * additiveFraction;
                 }
+                double additiveNumberOfCellsAccupied = additiveTotalVolume / (aA * aA * aA);
+                additiveNumberOfMollecules = additiveNumberOfCellsAccupied / size[2];
             }
             Console.WriteLine("");
             Console.WriteLine("Output");
@@ -256,10 +262,12 @@ namespace Polymer_brush
             }
 
             Console.WriteLine("Beta: " + y_edge);
+            Console.WriteLine("Number of molecules: " + additiveNumberOfMollecules);
             Console.WriteLine("Calculation is done!");
 
 
             sw.Close();
+            outputWriter.WriteLine("Adsorbed molecules: " + additiveNumberOfMollecules);
             outputWriter.WriteLine("/////////////////////////////////////////////////////////////");
             outputWriter.WriteLine("**************************************************************");
             outputWriter.WriteLine("**************************************************************");
@@ -564,6 +572,7 @@ namespace Polymer_brush
                 XBorderGUESS[0] = 0.01;
             else
                 XBorderGUESS[0] = 1;
+            //XBorderGUESS[0] = 0.01;
 
             double FNORM;
             double[] _XBorder = new double[NumberOfComponents-1];
@@ -670,9 +679,11 @@ namespace Polymer_brush
         {
             //Lamb_Pol = chemPotInTheBulk[2] + BA * (R * (  - 1)) * (R * (  - 1));
             FindVolumeFractionsInTheBrushForPoint(out Xbrush, x);
-            func_log = Xbrush[1].ToString()+"_;";
+            func_log = Xbrush[1].ToString()+"___;";
             
             double fay = Xbrush[1];
+            if (fay <= 0)
+                fay = fay;
             return fay * x * x;
 
         }
@@ -848,8 +859,12 @@ namespace Polymer_brush
                 if (det == 0)
                 {
                     //Node transition
-                    integralLogWriter.Close();
                     newthonWriter.Close();
+                    if (X[0] < Math.Pow(10, -18))
+                    {
+                        return;
+                    }
+                    integralLogWriter.Close();
                     throw new Exception();
                     ;
                 }
@@ -915,10 +930,32 @@ namespace Polymer_brush
                         throw new NotImplementedException();
                     //Split
                     if (deltaX[0] > 0)
-                        X[0] = mixingPartModule.Nodes[0].secondComposition[1] + 0.01;
+                    {
+                        if (mixingPartModule.Nodes[0].secondComposition[1] < 0.99)
+                            X[0] = mixingPartModule.Nodes[0].secondComposition[1] + 0.01;
+                        else
+                            X[0] = mixingPartModule.Nodes[0].secondComposition[1] + (1 - mixingPartModule.Nodes[0].secondComposition[1]) * 0.5;
+                    }
                     if (deltaX[0] < 0)
-                        X[0] = mixingPartModule.Nodes[0].firstComposition[1] - 0.1;
+                    {
+                        if (mixingPartModule.Nodes[0].firstComposition[1]>0.1)
+                            X[0] = mixingPartModule.Nodes[0].firstComposition[1] - 0.1;
+                        else
+                            X[0] = mixingPartModule.Nodes[0].firstComposition[1] *0.5;
+                    }
+                        
                     splitTransitions++;
+                    if (splitTransitions > 10)
+                    {
+                        //Split
+                        newthonWriter.WriteLine("Split");
+                        newthonWriter.Close();
+                        if (NumberOfComponents != 2)
+                            throw new NotImplementedException();
+                        //X[0] = firstSegregationPoint[1];
+                        X[0] = mixingPartModule.Nodes[0].secondComposition[1];
+                        return;
+                    }
                 }
                 /*if(X[0]>=mixingPartModule.segregationPoints[0]&& X[0]<= mixingPartModule.segregationPoints[1])
                 {
@@ -935,7 +972,8 @@ namespace Polymer_brush
                 iterations++;
                 if (iterations > ITMAX)
                 {
-                    if (splitTransitions > ITMAX * 0.2)
+                    //if (splitTransitions > ITMAX * 0.2)
+                  /*if (splitTransitions > 10)
                     {
                         //Split
                         newthonWriter.WriteLine("Split");
@@ -946,7 +984,7 @@ namespace Polymer_brush
                         X[0] = mixingPartModule.Nodes[0].secondComposition[1];
                         return;
                     }
-                    else
+                    else*/
                     {
                         newthonWriter.Close();
                         integralLogWriter.Close();

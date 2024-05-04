@@ -9,6 +9,7 @@ namespace Polymer_brush
 {
     class MixingPartModule
     {
+		bool correlation = false;
 		//public double[] segregationPoints { get; private set; }
 		//public double[] segregationMixingEnergies;
 
@@ -111,9 +112,11 @@ namespace Polymer_brush
 				if (IsCompositionInsideSegregationZone(X, out segreagationF))
 					return segreagationF;
 			}
-            return CalculateFloryMixingFreeEnergy(X);
-            return CalculateGugenheimMixingFreeEnergy(X);
-
+			if(!correlation)
+				return CalculateFloryMixingFreeEnergy(X);
+			else
+				return CalculateGugenheimMixingFreeEnergy(X);
+				
         }
 		private double[] CalculateFunctionalGroupsMolarFractions(double[] XofMolecules)
         {
@@ -174,8 +177,8 @@ namespace Polymer_brush
 				for (int j = 0; j < i; j++)
                     if (X[i] != 0 && X[j] != 0)
                     {
-						if (i == 0 && j == 1)
-							mixingSum += (Program.chi[i, j] + Program.c * X[1] * X[1]) * XX[i] * XX[j] * X[i] * X[j] * Program.etas[i, j];
+						if (i == 1 && j == 0)
+							mixingSum += (Program.chi[i, j] + Program.c *  X[1]) * XX[i] * XX[j] * X[i] * X[j] * Program.etas[i, j];
 						else
 							mixingSum += Program.chi[i, j] * XX[i] * XX[j] * X[i] * X[j] * Program.etas[i, j];
 
@@ -262,7 +265,7 @@ namespace Polymer_brush
         {
 			double[] initialComposition = new double[Program.NumberOfComponents];
 
-			initialComposition[1] = 0.7; //polymer
+			initialComposition[1] = 0.5; //polymer
 			if(Program.NumberOfComponents>2)
 				initialComposition[2] = Xadditive;
 			initialComposition[0] = 1 - initialComposition[1]- Xadditive;//solvent
@@ -279,27 +282,33 @@ namespace Polymer_brush
 			double[] bestSecondComposition = new double[Program.NumberOfComponents];
 			double[] best_Fedge = new double[2];
 
-			while (x1 > 0)
+			double leftF;
+			double rightF;
+			double[] leftComposition;
+			double[] rightComposition;
+
+			double Fsep;
+			double delta;
+
+			bool search = true;
+
+			do
 			{
-				x2 = initialComposition[1] + dx;
+				/*AcceptDeltaForSegregationSearch(x1, x2, Xadditive, out rightF, out leftF, out leftComposition, out rightComposition);
+				if (x2 != x1)
+					Fsep = leftF + (initialComposition[1] - x1) * (rightF - leftF) / (x2 - x1);
+				else
+					Fsep = leftF;
+				double deltaBeforeStep = Fsep - Finit;*/
 
-				double[] leftComposition = new double[Program.NumberOfComponents];
-				leftComposition[0] = 1 -Xadditive- x1;
-				leftComposition[1] = x1;
-				if(Program.NumberOfComponents>2)
-					leftComposition[2] = Xadditive;
-				double leftF = CalculateMixingFreeEnergy(leftComposition,false);
-
-				while (x2 < 1-Xadditive)
-				{
-					double[] rightComposition = new double[Program.NumberOfComponents];
-					rightComposition[0] = 1 - Xadditive - x2;
-					rightComposition[1] = x2;
-					if(Program.NumberOfComponents>2)
-						rightComposition[2] = Xadditive;
-					double rightF = CalculateMixingFreeEnergy(rightComposition,false);
-					double Fsep = leftF + (initialComposition[1] - x1) * (rightF - leftF) / (x2 - x1);
-					double delta = Fsep - Finit;
+				search = false;
+                //step right
+                if (x2 + dx < 1)
+                {
+					x2 += dx;
+					AcceptDeltaForSegregationSearch(x1, x2, Xadditive, out rightF, out leftF, out leftComposition, out rightComposition);
+					Fsep = leftF + (initialComposition[1] - x1) * (rightF - leftF) / (x2 - x1);
+					delta = Fsep - Finit;
 					if (delta < bestFmix)
 					{
 						bestFmix = delta;
@@ -307,12 +316,59 @@ namespace Polymer_brush
 						bestSecondComposition = rightComposition;
 						best_Fedge[0] = leftF;
 						best_Fedge[1] = rightF;
+						search = true;
 					}
-					x2 += dx;
+					else
+						x2 -= dx;
 				}
-				x1 -= dx;
+
+                if (x1 - dx > 0)
+                {
+					//step left
+					x1 -= dx;
+					AcceptDeltaForSegregationSearch(x1, x2, Xadditive, out rightF, out leftF, out leftComposition, out rightComposition);
+					Fsep = leftF + (initialComposition[1] - x1) * (rightF - leftF) / (x2 - x1);
+					delta = Fsep - Finit;
+					if (delta < bestFmix)
+					{
+						bestFmix = delta;
+						bestFirstComposition = leftComposition;
+						bestSecondComposition = rightComposition;
+						best_Fedge[0] = leftF;
+						best_Fedge[1] = rightF;
+						search = true;
+					}
+					else
+						x1 += dx;
+				}
+
+                if (x1 - dx > 0 && x2+dx<1)
+                {
+					//both steps
+					x1 -= dx;
+					x2 += dx;
+					AcceptDeltaForSegregationSearch(x1, x2, Xadditive, out rightF, out leftF, out leftComposition, out rightComposition);
+					Fsep = leftF + (initialComposition[1] - x1) * (rightF - leftF) / (x2 - x1);
+					delta = Fsep - Finit;
+					if (delta < bestFmix)
+					{
+						bestFmix = delta;
+						bestFirstComposition = leftComposition;
+						bestSecondComposition = rightComposition;
+						best_Fedge[0] = leftF;
+						best_Fedge[1] = rightF;
+						search = true;
+					}
+					else
+					{
+						x1 += dx;
+						x2 -= dx;
+					}
+				}
 			}
-            if (DistanceBetweenCompositions(bestFirstComposition, bestSecondComposition) < 0.01)
+			while (search);
+			
+			if (DistanceBetweenCompositions(bestFirstComposition, bestSecondComposition) < 0.01)
 				return;
 			Console.WriteLine("Node is found");
 			Node node = new Node(bestFirstComposition, bestSecondComposition, best_Fedge[0], best_Fedge[1]);
@@ -329,6 +385,24 @@ namespace Polymer_brush
 				segregationMixingEnergies[i] = best_Fedge[i];
 			}*/
 		}
+		public void AcceptDeltaForSegregationSearch(double x1, double x2, double Xadditive, out double rightF,out double leftF, out double[] leftComposition, out double[] rightComposition)
+        {
+			leftComposition = new double[Program.NumberOfComponents];
+			//left composition
+			leftComposition[0] = 1 - Xadditive - x1;
+			leftComposition[1] = x1;
+			if (Program.NumberOfComponents > 2)
+				leftComposition[2] = Xadditive;
+			leftF = CalculateMixingFreeEnergy(leftComposition, false);
+			//right composition
+			rightComposition = new double[Program.NumberOfComponents];
+			rightComposition[0] = 1 - Xadditive - x2;
+			rightComposition[1] = x2;
+			if (Program.NumberOfComponents > 2)
+				rightComposition[2] = Xadditive;
+			rightF = CalculateMixingFreeEnergy(rightComposition, false);
+			
+		}
 		private double DistanceBetweenCompositions(double[]A, double[] B)
         {
 			double output = 0;
@@ -342,7 +416,7 @@ namespace Polymer_brush
 				FindSegregationPointsBetweenSolventAndPolymerAtPresenceOfAdditive(0);
             else
             {
-				for (double Xadditive = 0; Xadditive < 0.05; Xadditive += 0.01)
+				for (double Xadditive = 0; Xadditive < 0.02; Xadditive += 0.01)
 				{
 					FindSegregationPointsBetweenSolventAndPolymerAtPresenceOfAdditive(Xadditive);
 				}
