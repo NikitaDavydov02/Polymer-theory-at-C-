@@ -863,41 +863,50 @@ namespace Polymer_brush
                     }
                     realComposition[0] = 1 - sum;
                 }
-                if (Func.Method.Name == "BrushEquations" && mixingPartModule.IsCompositionInsideSegregationZone(realComposition, out segregationDelta))
+                double[] firstSegregationPoint;
+                double[] secondSegregtionPoint;
+                if (Func.Method.Name == "BrushEquations" && mixingPartModule.IsCompositionInsideSegregationZone(realComposition, out segregationDelta, out firstSegregationPoint, out secondSegregtionPoint))
                 {
                     if (NumberOfComponents != 2)
                     {
-                        newthonWriter.Close();
-                        throw new NotImplementedException();
+                        //.X[0] = mixingPartModule.Nodes[0].secondComposition[1] + 0.0000001;
+                        X[0] = firstSegregationPoint[1] - 0.0000001;
+                        //newthonWriter.Close();
+                        //return;
+                        //throw new NotImplementedException();
                     }
-                    //Split
-                    if (deltaX[0] > 0)
-                    {
-                        if (mixingPartModule.Nodes[0].secondComposition[1] < 0.99)
-                            X[0] = mixingPartModule.Nodes[0].secondComposition[1] + 0.01;
-                        else
-                            X[0] = mixingPartModule.Nodes[0].secondComposition[1] + (1 - mixingPartModule.Nodes[0].secondComposition[1]) * 0.5;
-                    }
-                    if (deltaX[0] < 0)
-                    {
-                        if (mixingPartModule.Nodes[0].firstComposition[1] > 0.1)
-                            X[0] = mixingPartModule.Nodes[0].firstComposition[1] - 0.1;
-                        else
-                            X[0] = mixingPartModule.Nodes[0].firstComposition[1] * 0.5;
-                    }
-
-                    splitTransitions++;
-                    if (splitTransitions > 10)
+                    else
                     {
                         //Split
-                        newthonWriter.WriteLine("Split");
-                        newthonWriter.Close();
-                        //if (NumberOfComponents != 2)
-                        //    throw new NotImplementedException();
-                        //X[0] = firstSegregationPoint[1];
-                        X[0] = mixingPartModule.Nodes[0].secondComposition[1];
-                        return;
+                        if (deltaX[0] > 0)
+                        {
+                            if (mixingPartModule.Nodes[0].secondComposition[1] < 0.99)
+                                X[0] = mixingPartModule.Nodes[0].secondComposition[1] + 0.01;
+                            else
+                                X[0] = mixingPartModule.Nodes[0].secondComposition[1] + (1 - mixingPartModule.Nodes[0].secondComposition[1]) * 0.5;
+                        }
+                        if (deltaX[0] < 0)
+                        {
+                            if (mixingPartModule.Nodes[0].firstComposition[1] > 0.1)
+                                X[0] = mixingPartModule.Nodes[0].firstComposition[1] - 0.1;
+                            else
+                                X[0] = mixingPartModule.Nodes[0].firstComposition[1] * 0.5;
+                        }
+
+                        splitTransitions++;
+                        if (splitTransitions > 10)
+                        {
+                            //Split
+                            newthonWriter.WriteLine("Split");
+                            newthonWriter.Close();
+                            //if (NumberOfComponents != 2)
+                            //    throw new NotImplementedException();
+                            //X[0] = firstSegregationPoint[1];
+                            X[0] = mixingPartModule.Nodes[0].secondComposition[1];
+                            return;
+                        }
                     }
+                    
                 }
 
                 //</Split>
@@ -905,7 +914,7 @@ namespace Polymer_brush
                 if (iterations > ITMAX)
                 {
                     newthonWriter.Close();
-                    //return;
+                    return;
                     integralLogWriter.Close();
                     throw new Exception(" Newton method did not manage to find solution for system of equations");
 
