@@ -129,6 +129,7 @@ namespace Polymer_brush
                 calculationMode = CalculationMode.InfinitlyDelute;
             else
                 calculationMode = CalculationMode.Usual;
+            calculationMode = CalculationMode.InfinitlyDelute;
             OutputSettings(task);
             //COMMENT IT
             //CreateInputSettings();
@@ -801,18 +802,126 @@ namespace Polymer_brush
             double[] oldX = new double[XGuess.Length];
             double[] deltaX = new double[XGuess.Length];
             for (int i = 0; i < XGuess.Length; i++)
-                X[i] = XGuess[i];
-            double[] realComposition = new double[NumberOfComponents];
-            
-
-            FNORM = 0;
-            Func(X, out F, L);
-            for (int i = 0; i < L; i++)
-                FNORM += F[i] * F[i];
-
-            double[,] J = new double[L, XGuess.Length];
-            while (FNORM >= ERREL)
             {
+                X[i] = XGuess[i];
+                deltaX[i] = 0;
+                oldX[i] = X[i];
+            }
+            double[] realComposition = new double[NumberOfComponents];
+            FNORM = 0;
+            double[,] J = new double[L, XGuess.Length];
+
+            do
+            {
+                for (int i = 0; i < X.Length; i++)
+                    X[i] += deltaX[i];
+                //Post-step treatment
+                for (double devisionStepDegree = 1; ContainsOutrangeValues(X); devisionStepDegree++)
+                {
+                    for (int j = 0; j < X.Length; j++)
+                    {
+                        deltaX[j] /= 2;
+                        X[j] = oldX[j] + deltaX[j];
+                    }
+                }
+                //<Split>
+
+                double segregationDelta;
+                if (Func.Method.Name == "BorderEquations")
+                {
+                    double[] composition = new double[3];
+                    composition[0] = X[0];
+                    if (NumberOfComponents == 3)
+                        composition[2] = X[1];
+                    composition[1] = 1 - composition[0] - composition[2];
+                    bool inside = mixingPartModule.IsCompositionInsideSegregationZone(composition, out segregationDelta);
+                    if (inside)
+                    {
+                        X[0] = mixingPartModule.Nodes[0].secondComposition[0] - 0.0000001;
+                        newthonWriter.WriteLine("Split");
+                        newthonWriter.Close();
+                        return;
+                    }
+                }
+                if (Func.Method.Name == "BrushEquations")
+                {
+                    double sum = 0;
+                    for (int i = 0; i < XGuess.Length; i++)
+                    {
+                        realComposition[i + 1] = X[i];
+                        sum += X[i];
+                    }
+                    realComposition[0] = 1 - sum;
+                }
+                if (Func.Method.Name == "BrushEquations" && mixingPartModule.IsCompositionInsideSegregationZone(realComposition, out segregationDelta))
+                {
+                    if (NumberOfComponents != 2)
+                    {
+                        newthonWriter.Close();
+                        throw new NotImplementedException();
+                    }
+                    //Split
+                    if (deltaX[0] > 0)
+                    {
+                        if (mixingPartModule.Nodes[0].secondComposition[1] < 0.99)
+                            X[0] = mixingPartModule.Nodes[0].secondComposition[1] + 0.01;
+                        else
+                            X[0] = mixingPartModule.Nodes[0].secondComposition[1] + (1 - mixingPartModule.Nodes[0].secondComposition[1]) * 0.5;
+                    }
+                    if (deltaX[0] < 0)
+                    {
+                        if (mixingPartModule.Nodes[0].firstComposition[1] > 0.1)
+                            X[0] = mixingPartModule.Nodes[0].firstComposition[1] - 0.1;
+                        else
+                            X[0] = mixingPartModule.Nodes[0].firstComposition[1] * 0.5;
+                    }
+
+                    splitTransitions++;
+                    if (splitTransitions > 10)
+                    {
+                        //Split
+                        newthonWriter.WriteLine("Split");
+                        newthonWriter.Close();
+                        //if (NumberOfComponents != 2)
+                        //    throw new NotImplementedException();
+                        //X[0] = firstSegregationPoint[1];
+                        X[0] = mixingPartModule.Nodes[0].secondComposition[1];
+                        return;
+                    }
+                }
+
+                //</Split>
+                iterations++;
+                if (iterations > ITMAX)
+                {
+                    newthonWriter.Close();
+                    //return;
+                    integralLogWriter.Close();
+                    throw new Exception(" Newton method did not manage to find solution for system of equations");
+
+                }
+
+                string funcLog = Func(X, out F, L);
+                FNORM = 0;
+                for (int i = 0; i < L; i++)
+                    FNORM += F[i] * F[i];
+                //////////////////////////////////LOG///////////////////////////////////
+                string newthonWriterLine = "";
+                for (int i = 0; i < L; i++)
+                    newthonWriterLine += X[i] + ";";
+                for (int i = 0; i < L; i++)
+                    newthonWriterLine += F[i] + ";";
+                newthonWriterLine += FNORM + ";";
+                for (int i = 0; i < L; i++)
+                    for (int j = 0; j < L; j++)
+                        newthonWriterLine += J[i, j] + ";";
+                newthonWriter.WriteLine(iterations + ";" + newthonWriterLine + funcLog);
+                ///////////////////////////////////////////////////////////////////////////
+
+                /*Func(X, out F, L);
+                for (int i = 0; i < L; i++)
+                    FNORM += F[i] * F[i];*/
+                /////////////////////////////////JACOBIAN CALCULATION///////////////////////////////////////
                 //Calculate Jacobian
                 for (int i = 0; i < L; i++)
                     for (int j = 0; j < X.Length; j++)
@@ -868,122 +977,29 @@ namespace Polymer_brush
                     for (int j = 0; j < X.Length; j++)
                         rightParts[i] += J[i, j] * X[j];
                 }
-
+                if (iterations > 100)
+                    ;
                 X = Matrix.multiplyMatrixAndVector(L, L, reverse, rightParts);
-                if (iterations == 999)
-                    ;
-
                 for (int i = 0; i < X.Length; i++)
+                {
                     deltaX[i] = X[i] - oldX[i];
-
-                //Post-step treatment
-                for (double devisionStepDegree = 1; ContainsOutrangeValues(X); devisionStepDegree++)
-                {
-                    for (int j = 0; j < X.Length; j++)
-                    {
-                        deltaX[j] /= 2;
-                        X[j] = oldX[j] + deltaX[j];
-                    }
+                    X[i] = oldX[i];
                 }
-                //<Split>
-               
-                double segregationDelta;
-                if(Func.Method.Name == "BorderEquations")
-                {
-                    double[] composition = new double[3];
-                    composition[0] = X[0];
-                    if (NumberOfComponents == 3)
-                        composition[2] = X[1];
-                    composition[1] = 1 - composition[0]- composition[2];
-                    bool inside = mixingPartModule.IsCompositionInsideSegregationZone(composition, out segregationDelta);
-                    if (inside)
-                    {
-                        X[0] = mixingPartModule.Nodes[0].secondComposition[0] - 0.0000001;
-                        newthonWriter.WriteLine("Split");
-                        newthonWriter.Close();
-                        return;
-                    }
-                }
-                if(Func.Method.Name == "BrushEquations")
-                {
-                    double sum = 0;
-                    for (int i = 0; i < XGuess.Length; i++)
-                    {
-                        realComposition[i + 1] = X[i];
-                        sum += X[i];
-                    }
-                    realComposition[0] = 1 - sum;
-                }
-                if (Func.Method.Name== "BrushEquations" && mixingPartModule.IsCompositionInsideSegregationZone(realComposition, out segregationDelta))
-                {
-                    if (NumberOfComponents != 2)
-                    {
-                        newthonWriter.Close();
-                        throw new NotImplementedException();
-                    }
-                    //Split
-                    if (deltaX[0] > 0)
-                    {
-                        if (mixingPartModule.Nodes[0].secondComposition[1] < 0.99)
-                            X[0] = mixingPartModule.Nodes[0].secondComposition[1] + 0.01;
-                        else
-                            X[0] = mixingPartModule.Nodes[0].secondComposition[1] + (1 - mixingPartModule.Nodes[0].secondComposition[1]) * 0.5;
-                    }
-                    if (deltaX[0] < 0)
-                    {
-                        if (mixingPartModule.Nodes[0].firstComposition[1]>0.1)
-                            X[0] = mixingPartModule.Nodes[0].firstComposition[1] - 0.1;
-                        else
-                            X[0] = mixingPartModule.Nodes[0].firstComposition[1] *0.5;
-                    }
-                        
-                    splitTransitions++;
-                    if (splitTransitions > 10)
-                    {
-                        //Split
-                        newthonWriter.WriteLine("Split");
-                        newthonWriter.Close();
-                        //if (NumberOfComponents != 2)
-                        //    throw new NotImplementedException();
-                        //X[0] = firstSegregationPoint[1];
-                        X[0] = mixingPartModule.Nodes[0].secondComposition[1];
-                        return;
-                    }
-                }
-               
-                //</Split>
-                iterations++;
-                if (iterations > ITMAX)
-                {
-                    newthonWriter.Close();
-                    //return;
-                    integralLogWriter.Close();
-                    throw new Exception(" Newton method did not manage to find solution for system of equations");
-
-                }
-                if (iterations == 999)
-                    ;
-                string funcLog = Func(X, out F, L);
-                FNORM = 0;
-                for (int i = 0; i < L; i++)
-                    FNORM += F[i] * F[i];
-                ///////////////////////////////////////////////////////////////////////////
-                string newthonWriterLine = "";
-                for (int i = 0; i < L; i++)
-                    newthonWriterLine += X[i] + ";";
-                for (int i = 0; i < L; i++)
-                    newthonWriterLine += F[i] + ";";
-                newthonWriterLine += FNORM + ";";
-                for (int i = 0; i < L; i++)
-                    for (int j = 0; j < L; j++)
-                        newthonWriterLine += J[i, j] + ";";
-                newthonWriter.WriteLine(iterations + ";" + newthonWriterLine + funcLog);
-                ///////////////////////////////////////////////////////////////////////////
                 
             }
+            while (!Converged(deltaX,ERREL));
+
+            
             newthonWriter.WriteLine("Converged!");
             newthonWriter.Close();
             
+        }
+        static bool Converged(double[] deltaX, double dX)
+        {
+            foreach (double x in deltaX)
+                if (Math.Abs(x) > dX)
+                    return false;
+            return true;
         }
         static bool ContainsOutrangeValues(double[] X)
         {
