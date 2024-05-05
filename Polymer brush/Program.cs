@@ -129,7 +129,7 @@ namespace Polymer_brush
                 calculationMode = CalculationMode.InfinitlyDelute;
             else
                 calculationMode = CalculationMode.Usual;
-            calculationMode = CalculationMode.InfinitlyDelute;
+            //calculationMode = CalculationMode.InfinitlyDelute;
             OutputSettings(task);
             //COMMENT IT
             //CreateInputSettings();
@@ -590,7 +590,7 @@ namespace Polymer_brush
                 XBorderGUESS[0] = 0.01;
             else
                 XBorderGUESS[0] = 0.99;
-            XBorderGUESS[0] = 0.99;
+            XBorderGUESS[0] = 0.98;
             // XBorderGUESS[0] = 0.01;
             double FNORM;
             double[] _XBorder = new double[NumberOfComponents-1];
@@ -816,6 +816,14 @@ namespace Polymer_brush
                 for (int i = 0; i < X.Length; i++)
                     X[i] += deltaX[i];
                 //Post-step treatment
+
+                if (oldX.Sum() >= 1 && L == 2)
+                {
+                    deltaX[1] = -deltaX[0];
+                    for (int j = 0; j < X.Length; j++)
+                        X[j] = oldX[j] + deltaX[j];
+                   
+                }
                 for (double devisionStepDegree = 1; ContainsOutrangeValues(X); devisionStepDegree++)
                 {
                     for (int j = 0; j < X.Length; j++)
@@ -824,6 +832,8 @@ namespace Polymer_brush
                         X[j] = oldX[j] + deltaX[j];
                     }
                 }
+                
+
                 //<Split>
 
                 double segregationDelta;
@@ -1012,6 +1022,7 @@ namespace Polymer_brush
                 sum += x;
             if (sum > 1)
                 return true;
+
             return false;
         }
         static string BorderEquations(double[] X, out double[] F, int L)
