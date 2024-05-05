@@ -586,12 +586,12 @@ namespace Polymer_brush
             //this is the fraction of solvent at the border
             //XBorderGUESS[1]= volumeFractionsInTheBulk[1];//this is the fraction of biocomponnt at the border
 
-            /*if(c==0.0)
+            if(c==0.0)
                 XBorderGUESS[0] = 0.01;
             else
-                XBorderGUESS[0] = 1;
-            */
-            XBorderGUESS[0] = 0.01;
+                XBorderGUESS[0] = 0.99;
+            XBorderGUESS[0] = 0.99;
+            // XBorderGUESS[0] = 0.01;
             double FNORM;
             double[] _XBorder = new double[NumberOfComponents-1];
             double ERREL = Math.Pow(10, -3);
