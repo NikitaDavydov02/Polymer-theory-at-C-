@@ -864,13 +864,16 @@ namespace Polymer_brush
                     realComposition[0] = 1 - sum;
                 }
                 double[] firstSegregationPoint;
-                double[] secondSegregtionPoint;
-                if (Func.Method.Name == "BrushEquations" && mixingPartModule.IsCompositionInsideSegregationZone(realComposition, out segregationDelta, out firstSegregationPoint, out secondSegregtionPoint))
+                double[] secondSegregationPoint;
+                if (Func.Method.Name == "BrushEquations" && mixingPartModule.IsCompositionInsideSegregationZone(realComposition, out segregationDelta, out firstSegregationPoint, out secondSegregationPoint))
                 {
                     if (NumberOfComponents != 2)
                     {
                         //.X[0] = mixingPartModule.Nodes[0].secondComposition[1] + 0.0000001;
-                        X[0] = firstSegregationPoint[1] - 0.0000001;
+                        if (deltaX[0] > 0)
+                            X[0] = secondSegregationPoint[1] - 0.01;
+                        if (deltaX[0] < 0)
+                            X[0] = firstSegregationPoint[1] + 0.01;
                         //newthonWriter.Close();
                         //return;
                         //throw new NotImplementedException();
