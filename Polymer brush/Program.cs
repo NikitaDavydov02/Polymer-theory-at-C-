@@ -84,10 +84,10 @@ namespace Polymer_brush
             foreach (Input task in tasks.Keys)
             {
                 string outputPath = tasks[task];
-                RunTask(task);
+                //RunTask(task);
                 try
                 {
-                    //RunTask(task);
+                    RunTask(task);
                 }
                 catch(Exception ex)
                 {
@@ -129,6 +129,7 @@ namespace Polymer_brush
                 calculationMode = CalculationMode.InfinitlyDelute;
             else
                 calculationMode = CalculationMode.Usual;
+            calculationMode = CalculationMode.Usual;
             //calculationMode = CalculationMode.InfinitlyDelute;
             OutputSettings(task);
             //COMMENT IT
@@ -146,6 +147,7 @@ namespace Polymer_brush
 
             /////////////////////////////////////////////////////////////////////
             /////////////////////////////////////////////////////////////////////
+            Console.WriteLine("Calculating mixing energy profile");
             List<KeyValuePair<double, List<double>>> mixingEnergy = CalculateMixingEnergyProfile(1, 0, 20);
             using (StreamWriter sw = new StreamWriter("mixingFenergyOfSolventAndPolymer.txt"))
             {
@@ -162,7 +164,7 @@ namespace Polymer_brush
             sw = new StreamWriter("profile.txt");
             integralLogWriter = new StreamWriter("integral_log_writer.txt");
 
-
+            
             y_edge = BisectionSolve(y_min, y_max, yacc, NormalizationFunction, new List<double>());
             y_cur = y_min;
             integralLogWriter.Close();
@@ -590,7 +592,8 @@ namespace Polymer_brush
                 XBorderGUESS[0] = 0.01;
             else
                 XBorderGUESS[0] = 0.99;
-            XBorderGUESS[0] = 0.98;
+            XBorderGUESS[0] = 0.88;
+            //XBorderGUESS[0] = 0.98;
             // XBorderGUESS[0] = 0.01;
             double FNORM;
             double[] _XBorder = new double[NumberOfComponents-1];
@@ -710,6 +713,7 @@ namespace Polymer_brush
         }
         static double BisectionSolve(double y_min, double y_max, double yacc, Func<double, List<double>, double> func, List<double> parameters)
         {
+            Console.WriteLine("Bisection solving start");
             double output = 0;
             int j_max = 100; //!Maximum allowed number of bisections.
                              //!Using bisection, find the root of a function func known to lie between x1 and x2.The
@@ -746,7 +750,11 @@ namespace Polymer_brush
                 if (fmid < 0)
                     output = xmid;
                 if (Math.Abs(dx) < yacc || fmid == 0)
+                {
                     return output;
+                    Console.WriteLine("Solution is found!");
+                }
+                    
             }
             Console.WriteLine("Too many iterations");
             integralLogWriter.Close();
@@ -1279,6 +1287,7 @@ namespace Polymer_brush
             outputWriter.WriteLine("///////////////////////////INPUT////////////////////////////");
             outputWriter.WriteLine("Calculation mode: " + calculationMode);
             outputWriter.WriteLine("Number of components: " + settings.Components.Count);
+            outputWriter.WriteLine("Correlatons: " + mixingPartModule.correlation);
 
             Component polymer = null;
             foreach (Component comp in settings.Components)
