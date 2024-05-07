@@ -20,6 +20,8 @@ namespace Polymer_brush
         public static double osmoticPressureOutsideOfTheStep;
         public static double c;
         public static int MaxNumberOfComponent = 50;
+
+        static double norm;
         //public static double[] segregationPoints;
 
         public static double[,] chi;
@@ -84,10 +86,10 @@ namespace Polymer_brush
             foreach (Input task in tasks.Keys)
             {
                 string outputPath = tasks[task];
-                RunTask(task);
+                //RunTask(task);
                 try
                 {
-                    //RunTask(task);
+                    RunTask(task);
                 }
                 catch(Exception ex)
                 {
@@ -144,6 +146,7 @@ namespace Polymer_brush
             if (calculationMode == CalculationMode.InfinitlyDelute)
                 SwitchToInfinitlyDeluteMode();
 
+            norm = (aA / R) * rNA * areaDensityDegree;
             /////////////////////////////////////////////////////////////////////
             /////////////////////////////////////////////////////////////////////
             List<KeyValuePair<double, List<double>>> mixingEnergy = CalculateMixingEnergyProfile(1, 0, 20);
@@ -179,6 +182,7 @@ namespace Polymer_brush
             y_cur = 1;
             int numberOfPoints = 100;
             double stepInRelativeUnits = (y_edge - 1) / numberOfPoints;
+            double polymerAmount = 0;
             //while (y_cur < y_edge)
             for (y_cur = 1 + stepInRelativeUnits; y_cur < y_edge; y_cur += stepInRelativeUnits)
             {
@@ -192,6 +196,8 @@ namespace Polymer_brush
                 info.polymerEquationStretchingPart = brushEquationInfo.polymerEquationStretchingPart;
                 info.mixingEnergyContributionToF = brushEquationInfo.mixingEnergyContributionToF;
                 info.entropyContributionToF = brushEquationInfo.entropyContributionToF;
+                info.additive_dX_error = brushEquationInfo.additive_dX_error;
+                info.polymer_dX_error = brushEquationInfo.polymer_dX_error;
 
                 for (int i = 0; i < NumberOfComponents; i++)
                 {
@@ -204,7 +210,7 @@ namespace Polymer_brush
                 
                 info.composition = composition;
                 profile.Add(new KeyValuePair<double, ProfileInfo>(y_cur, info));
-                
+                polymerAmount += stepInRelativeUnits * y_cur * y_cur * composition[1];
                 // y_cur += aA / R;
             }
             y_cur = y_min;
@@ -238,7 +244,7 @@ namespace Polymer_brush
                     //double additiveFraction = FindAdditiveConcentrationForParticularPolymerAndSolventContentInTheBrush(baseFractions);
                     double error = volumeFractionsInTheBulk[2] * 0.01;
                     error = Math.Pow(10, -17);
-                    additiveFraction = BisectionSolve(Math.Pow(10, -18), 0.9, error, InfinitlyDeluteAdditivesEquationsForBisectionSolve, new List<double> { baseFractions[0], baseFractions[1] });
+                    additiveFraction = BisectionSolve(Math.Pow(10, -10), 0.9, error, InfinitlyDeluteAdditivesEquationsForBisectionSolve, new List<double> { baseFractions[0], baseFractions[1] });
 
                     profile[i].Value.composition.Add(additiveFraction);
                     additiveTotalVolume += (stepInRelativeUnits * R) * 4 * 3.1415 * (y_cur * R) * (y_cur * R) * additiveFraction;
@@ -252,7 +258,7 @@ namespace Polymer_brush
                     y_cur = profile[i].Key;
                     additiveFraction = profile[i].Value.composition[2];
                     additiveTotalVolume += (stepInRelativeUnits * R) * 4 * 3.1415 * (y_cur * R) * (y_cur * R) * additiveFraction;
-                   
+                    
 
                 }
             }
@@ -263,13 +269,15 @@ namespace Polymer_brush
             outputWriter.WriteLine();
             outputWriter.WriteLine();
             outputWriter.WriteLine("///////////////////////////OUTPUT/////////////////////////////");
-            outputWriter.WriteLine("y_cur,nm    y_cur    solvent    polymer    bio    polymerEquationError    polymerEquationMixingPart    polymerEquationStretchingPart    mixingEnergyContributionToF    entropyContributionToF");
+            outputWriter.WriteLine("y_cur,nm    y_cur    solvent    polymer    bio    polymer_dx    additve_dx    polymerEquationError    polymerEquationMixingPart    polymerEquationStretchingPart    mixingEnergyContributionToF    entropyContributionToF");
             for (int i = 0; i < profile.Count; i++)
             {
                 string line = ((profile[i].Key-1)*R*Math.Pow(10,9)) + "    ";
                 line+= profile[i].Key.ToString() + "    ";
                 for (int j = 0; j < profile[i].Value.composition.Count; j++)
                     line += profile[i].Value.composition[j] + "    ";
+                line += profile[i].Value.polymer_dX_error + "    ";
+                line += profile[i].Value.additive_dX_error + "    ";
                 line += profile[i].Value.polymerEquationError + "    ";
                 line += profile[i].Value.polymerEquationMixingPart + "    ";
                 line += profile[i].Value.polymerEquationStretchingPart + "    ";
@@ -281,12 +289,14 @@ namespace Polymer_brush
 
             Console.WriteLine("Beta: " + y_edge);
             Console.WriteLine("Number of molecules: " + additiveNumberOfMollecules);
+            Console.WriteLine("Normalization relative error: " + (polymerAmount - norm)/norm);
             Console.WriteLine("Calculation is done!");
 
 
             sw.Close();
             outputWriter.WriteLine("Adsorbed molecules: " + additiveNumberOfMollecules);
             outputWriter.WriteLine("Adsorbtion (mol/m2): " + (additiveNumberOfMollecules/(6.02*Math.Pow(10,23)))/(4*3.1415*R*R));
+            outputWriter.WriteLine("Normalization relative error: " + (polymerAmount - norm) / norm);
             outputWriter.WriteLine("/////////////////////////////////////////////////////////////");
             outputWriter.WriteLine("**************************************************************");
             outputWriter.WriteLine("**************************************************************");
@@ -556,9 +566,9 @@ namespace Polymer_brush
         {
 
             double nu = 2.0;
-            double norm = rNA / (rNB * (nu + 1.0));
+            //double norm = rNA / (rNB * (nu + 1.0));
             //norm = actualSigma * rNA * aA * aA * aA / R;
-            norm = (aA / R) * rNA * areaDensityDegree;
+            //norm = (aA / R) * rNA * areaDensityDegree;
             double integrationMin = y_min;
             double integrationMax = y;
             y_cur = y;
@@ -1007,7 +1017,12 @@ namespace Polymer_brush
                     deltaX[i] = X[i] - oldX[i];
                     X[i] = oldX[i];
                 }
-                
+                if(Func.Method.Name == "BrushEquations")
+                {
+                    brushEquationInfo.polymer_dX_error = deltaX[0];
+                    if (L == 2)
+                        brushEquationInfo.additive_dX_error = deltaX[1];
+                }
             }
             while (!Converged(deltaX,ERREL));
 
@@ -1352,5 +1367,7 @@ namespace Polymer_brush
         public double polymerEquationMixingPart;
         public double mixingEnergyContributionToF;
         public double entropyContributionToF;
+        public double polymer_dX_error;
+        public double additive_dX_error;
     }
 }

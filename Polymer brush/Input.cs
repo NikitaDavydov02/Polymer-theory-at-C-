@@ -33,5 +33,6 @@ namespace Polymer_brush
     {
         [EnumMember]
         Sphere,
+        Plane,
     }
 }
