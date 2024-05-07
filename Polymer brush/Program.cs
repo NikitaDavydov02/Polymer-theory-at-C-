@@ -562,6 +562,7 @@ namespace Polymer_brush
             }
             return Math.Log(X[0]) + sum1 + sum;
         }
+        static double[] volFractionsAtTheBorder;
         static double NormalizationFunction(double y, List<double> parameters)
         {
 
@@ -611,7 +612,7 @@ namespace Polymer_brush
             ////////////
             DNEQNF(BorderEquations, ERREL, NumberOfComponents - 1, 1000, XBorderGUESS, out _XBorder, out FNORM);
 
-            double[] volFractionsAtTheBorder = new double[NumberOfComponents];
+            volFractionsAtTheBorder = new double[NumberOfComponents];
             double volumeFractionSum = 0;
 
             componentInTheBulkNumber = 0;
@@ -776,7 +777,13 @@ namespace Polymer_brush
             XBrushGUESS[0] = 0.97;//this is the fraction of polymer in the brush
             for(int i=1;i<XBrushGUESS.Length;i++)
                 XBrushGUESS[i] = Math.Pow(10, -8);//this is the fraction of biocomponent in the brush
-             //<OLD>
+
+            //COMMENT THIS
+            XBrushGUESS[0] = volFractionsAtTheBorder[1];
+            if (calculationMode == CalculationMode.Usual)
+                XBrushGUESS[1] = volFractionsAtTheBorder[2];
+            //COMMENT THIS
+            //<OLD>
 
             /*XBrushGUESS[0] = 0.01;
             if (NumberOfComponents > 2)
