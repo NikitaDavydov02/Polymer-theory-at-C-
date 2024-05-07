@@ -195,6 +195,8 @@ namespace Polymer_brush
                 info.polymerEquationStretchingPart = brushEquationInfo.polymerEquationStretchingPart;
                 info.mixingEnergyContributionToF = brushEquationInfo.mixingEnergyContributionToF;
                 info.entropyContributionToF = brushEquationInfo.entropyContributionToF;
+                info.additive_dX_error = brushEquationInfo.additive_dX_error;
+                info.polymer_dX_error = brushEquationInfo.polymer_dX_error;
 
                 for (int i = 0; i < NumberOfComponents; i++)
                 {
@@ -269,7 +271,7 @@ namespace Polymer_brush
             outputWriter.WriteLine();
             outputWriter.WriteLine();
             outputWriter.WriteLine("///////////////////////////OUTPUT/////////////////////////////");
-            outputWriter.WriteLine("y_cur,nm    y_cur    solvent    polymer    bio    polymerEquationError    additiveEquationError    polymerEquationMixingPart    polymerEquationStretchingPart    mixingEnergyContributionToF    entropyContributionToF");
+            outputWriter.WriteLine("y_cur,nm    y_cur    solvent    polymer    bio    polymerEquationError    additiveEquationError    polymer_dx    additive_dx    polymerEquationMixingPart    polymerEquationStretchingPart    mixingEnergyContributionToF    entropyContributionToF");
             for (int i = 0; i < profile.Count; i++)
             {
                 string line = ((profile[i].Key-1)*R*Math.Pow(10,9)) + "    ";
@@ -278,6 +280,8 @@ namespace Polymer_brush
                     line += profile[i].Value.composition[j] + "    ";
                 line += profile[i].Value.polymerEquationError + "    ";
                 line += profile[i].Value.additiveEquationError + "    ";
+                line += profile[i].Value.polymer_dX_error + "    ";
+                line += profile[i].Value.additive_dX_error + "    ";
                 line += profile[i].Value.polymerEquationMixingPart + "    ";
                 line += profile[i].Value.polymerEquationStretchingPart + "    ";
                 line += profile[i].Value.mixingEnergyContributionToF + "    ";
@@ -1027,6 +1031,13 @@ namespace Polymer_brush
                     deltaX[i] = X[i] - oldX[i];
                     X[i] = oldX[i];
                 }
+                if(Func.Method.Name == "BrushEquations")
+                {
+                    brushEquationInfo.polymer_dX_error = deltaX[0];
+                    if (L == 2)
+                        brushEquationInfo.additive_dX_error = deltaX[1];
+                }
+
                 
             }
             while (!Converged(deltaX,ERREL));
@@ -1374,5 +1385,7 @@ namespace Polymer_brush
         public double polymerEquationMixingPart;
         public double mixingEnergyContributionToF;
         public double entropyContributionToF;
+        public double polymer_dX_error;
+        public double additive_dX_error;
     }
 }
