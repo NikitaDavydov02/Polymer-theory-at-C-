@@ -590,7 +590,7 @@ namespace Polymer_brush
                 XBorderGUESS[0] = 0.01;
             else
                 XBorderGUESS[0] = 0.99;
-            XBorderGUESS[0] = 0.98;
+            XBorderGUESS[0] = 0.88;
             // XBorderGUESS[0] = 0.01;
             double FNORM;
             double[] _XBorder = new double[NumberOfComponents-1];
@@ -1279,6 +1279,7 @@ namespace Polymer_brush
             outputWriter.WriteLine("///////////////////////////INPUT////////////////////////////");
             outputWriter.WriteLine("Calculation mode: " + calculationMode);
             outputWriter.WriteLine("Number of components: " + settings.Components.Count);
+            outputWriter.WriteLine("Correlations: " + mixingPartModule.correlation);
 
             Component polymer = null;
             foreach (Component comp in settings.Components)
