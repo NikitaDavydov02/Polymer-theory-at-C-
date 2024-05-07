@@ -248,6 +248,7 @@ namespace Polymer_brush
 
                     profile[i].Value.composition.Add(additiveFraction);
                     additiveTotalVolume += (stepInRelativeUnits * R) * 4 * 3.1415 * (y_cur * R) * (y_cur * R) * additiveFraction;
+                    profile[i].Value.adsorbtion = additiveTotalVolume / (aA * aA * aA * size[2]);
                 }
                 
             }
@@ -258,7 +259,7 @@ namespace Polymer_brush
                     y_cur = profile[i].Key;
                     additiveFraction = profile[i].Value.composition[2];
                     additiveTotalVolume += (stepInRelativeUnits * R) * 4 * 3.1415 * (y_cur * R) * (y_cur * R) * additiveFraction;
-                    
+                    profile[i].Value.adsorbtion = additiveTotalVolume / (aA * aA * aA * size[2]);
 
                 }
             }
@@ -269,13 +270,14 @@ namespace Polymer_brush
             outputWriter.WriteLine();
             outputWriter.WriteLine();
             outputWriter.WriteLine("///////////////////////////OUTPUT/////////////////////////////");
-            outputWriter.WriteLine("y_cur,nm    y_cur    solvent    polymer    bio    polymer_dx    additve_dx    polymerEquationError    polymerEquationMixingPart    polymerEquationStretchingPart    mixingEnergyContributionToF    entropyContributionToF");
+            outputWriter.WriteLine("y_cur,nm    y_cur    solvent    polymer    bio    adsorbtion    polymer_dx    additve_dx    polymerEquationError    polymerEquationMixingPart    polymerEquationStretchingPart    mixingEnergyContributionToF    entropyContributionToF");
             for (int i = 0; i < profile.Count; i++)
             {
                 string line = ((profile[i].Key-1)*R*Math.Pow(10,9)) + "    ";
                 line+= profile[i].Key.ToString() + "    ";
                 for (int j = 0; j < profile[i].Value.composition.Count; j++)
                     line += profile[i].Value.composition[j] + "    ";
+                line += profile[i].Value.adsorbtion + "    ";
                 line += profile[i].Value.polymer_dX_error + "    ";
                 line += profile[i].Value.additive_dX_error + "    ";
                 line += profile[i].Value.polymerEquationError + "    ";
@@ -1379,5 +1381,6 @@ namespace Polymer_brush
         public double entropyContributionToF;
         public double polymer_dX_error;
         public double additive_dX_error;
+        public double adsorbtion;
     }
 }
