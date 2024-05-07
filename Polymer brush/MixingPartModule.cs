@@ -9,7 +9,7 @@ namespace Polymer_brush
 {
     class MixingPartModule
     {
-		public bool correlation = true;
+		public bool correlation = false;
 		//public double[] segregationPoints { get; private set; }
 		//public double[] segregationMixingEnergies;
 
@@ -416,7 +416,7 @@ namespace Polymer_brush
 				FindSegregationPointsBetweenSolventAndPolymerAtPresenceOfAdditive(0);
             else
             {
-				for (double Xadditive = 0; Xadditive < 0.2; Xadditive += 0.01)
+				for (double Xadditive = 0; Xadditive < 0.3; Xadditive += 0.001)
 				{
 					FindSegregationPointsBetweenSolventAndPolymerAtPresenceOfAdditive(Xadditive);
 				}
