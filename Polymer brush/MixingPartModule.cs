@@ -416,7 +416,7 @@ namespace Polymer_brush
 				FindSegregationPointsBetweenSolventAndPolymerAtPresenceOfAdditive(0);
             else
             {
-				for (double Xadditive = 0; Xadditive < 0.2; Xadditive += 0.01)
+				for (double Xadditive = 0; Xadditive < 0.3; Xadditive += 0.001)
 				{
 					FindSegregationPointsBetweenSolventAndPolymerAtPresenceOfAdditive(Xadditive);
 				}

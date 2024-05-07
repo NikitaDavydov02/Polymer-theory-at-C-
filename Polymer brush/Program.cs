@@ -779,7 +779,7 @@ namespace Polymer_brush
                 XBrushGUESS[i] = Math.Pow(10, -8);//this is the fraction of biocomponent in the brush
 
             //COMMENT THIS
-            XBrushGUESS[0] = volFractionsAtTheBorder[1];
+            XBrushGUESS[0] = volFractionsAtTheBorder[1]+0.01;
             if (calculationMode == CalculationMode.Usual)
                 XBrushGUESS[1] = volFractionsAtTheBorder[2];
             //COMMENT THIS
@@ -886,6 +886,7 @@ namespace Polymer_brush
                 {
                     if (NumberOfComponents != 2)
                     {
+                        newthonWriter.WriteLine("Split");
                         //.X[0] = mixingPartModule.Nodes[0].secondComposition[1] + 0.0000001;
                         if (deltaX[0] > 0)
                             X[0] = secondSegregationPoint[1] - 0.01;
@@ -897,6 +898,7 @@ namespace Polymer_brush
                     }
                     else
                     {
+                        newthonWriter.WriteLine("Split");
                         //Split
                         if (deltaX[0] > 0)
                         {
@@ -917,12 +919,13 @@ namespace Polymer_brush
                         if (splitTransitions > 10)
                         {
                             //Split
-                            newthonWriter.WriteLine("Split");
+                            newthonWriter.WriteLine("Split return");
                             newthonWriter.Close();
                             //if (NumberOfComponents != 2)
                             //    throw new NotImplementedException();
                             //X[0] = firstSegregationPoint[1];
-                            X[0] = mixingPartModule.Nodes[0].secondComposition[1];
+
+                            //X[0] = mixingPartModule.Nodes[0].secondComposition[1];
                             return;
                         }
                     }
