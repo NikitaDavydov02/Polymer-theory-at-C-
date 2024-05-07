@@ -125,6 +125,7 @@ namespace Polymer_brush
             //ReadSettings();
 
             Enter(task);
+            norm = (aA / R) * rNA * areaDensityDegree;
             if (volumeFractionsInTheBulk[2] <= 0.001)
                 calculationMode = CalculationMode.InfinitlyDelute;
             else
@@ -214,6 +215,7 @@ namespace Polymer_brush
             double additiveTotalVolume = 0;
             double additiveFraction = 0;
             double additiveNumberOfCellsAccupied;
+            double polymerIntegral = 0;
             if (calculationMode == CalculationMode.InfinitlyDelute)
             {
                 Enter(task);
@@ -244,6 +246,7 @@ namespace Polymer_brush
 
                     profile[i].Value.composition.Add(additiveFraction);
                     additiveTotalVolume += (stepInRelativeUnits * R) * 4 * 3.1415 * (y_cur * R) * (y_cur * R) * additiveFraction;
+                    polymerIntegral += stepInRelativeUnits * y_cur * y_cur * profile[i].Value.composition[1];
                 }
                 
             }
@@ -254,7 +257,8 @@ namespace Polymer_brush
                     y_cur = profile[i].Key;
                     additiveFraction = profile[i].Value.composition[2];
                     additiveTotalVolume += (stepInRelativeUnits * R) * 4 * 3.1415 * (y_cur * R) * (y_cur * R) * additiveFraction;
-                   
+                    polymerIntegral += stepInRelativeUnits * y_cur * y_cur * profile[i].Value.composition[1];
+
 
                 }
             }
@@ -265,7 +269,7 @@ namespace Polymer_brush
             outputWriter.WriteLine();
             outputWriter.WriteLine();
             outputWriter.WriteLine("///////////////////////////OUTPUT/////////////////////////////");
-            outputWriter.WriteLine("y_cur,nm    y_cur    solvent    polymer    bio    polymerEquationError    polymerEquationMixingPart    polymerEquationStretchingPart    mixingEnergyContributionToF    entropyContributionToF");
+            outputWriter.WriteLine("y_cur,nm    y_cur    solvent    polymer    bio    polymerEquationError    additiveEquationError    polymerEquationMixingPart    polymerEquationStretchingPart    mixingEnergyContributionToF    entropyContributionToF");
             for (int i = 0; i < profile.Count; i++)
             {
                 string line = ((profile[i].Key-1)*R*Math.Pow(10,9)) + "    ";
@@ -273,6 +277,7 @@ namespace Polymer_brush
                 for (int j = 0; j < profile[i].Value.composition.Count; j++)
                     line += profile[i].Value.composition[j] + "    ";
                 line += profile[i].Value.polymerEquationError + "    ";
+                line += profile[i].Value.additiveEquationError + "    ";
                 line += profile[i].Value.polymerEquationMixingPart + "    ";
                 line += profile[i].Value.polymerEquationStretchingPart + "    ";
                 line += profile[i].Value.mixingEnergyContributionToF + "    ";
@@ -289,6 +294,7 @@ namespace Polymer_brush
             sw.Close();
             outputWriter.WriteLine("Adsorbed molecules: " + additiveNumberOfMollecules);
             outputWriter.WriteLine("Adsorbtion (mol/m2): " + (additiveNumberOfMollecules/(6.02*Math.Pow(10,23)))/(4*3.1415*R*R));
+            outputWriter.WriteLine("Normalization relative error: " + (polymerIntegral - norm) / norm);
             outputWriter.WriteLine("/////////////////////////////////////////////////////////////");
             outputWriter.WriteLine("**************************************************************");
             outputWriter.WriteLine("**************************************************************");
@@ -554,13 +560,14 @@ namespace Polymer_brush
             }
             return Math.Log(X[0]) + sum1 + sum;
         }
+        static double norm;
         static double NormalizationFunction(double y, List<double> parameters)
         {
 
             double nu = 2.0;
-            double norm = rNA / (rNB * (nu + 1.0));
+            //double norm = rNA / (rNB * (nu + 1.0));
             //norm = actualSigma * rNA * aA * aA * aA / R;
-            norm = (aA / R) * rNA * areaDensityDegree;
+           // norm = (aA / R) * rNA * areaDensityDegree;
             double integrationMin = y_min;
             double integrationMax = y;
             y_cur = y;
@@ -592,8 +599,7 @@ namespace Polymer_brush
                 XBorderGUESS[0] = 0.01;
             else
                 XBorderGUESS[0] = 0.99;
-            XBorderGUESS[0] = 0.88;
-            //XBorderGUESS[0] = 0.98;
+            //XBorderGUESS[0] = 0.88;
             // XBorderGUESS[0] = 0.01;
             double FNORM;
             double[] _XBorder = new double[NumberOfComponents-1];
@@ -771,8 +777,11 @@ namespace Polymer_brush
             XBrush = new double[NumberOfComponents];
 
             //<OLD>
-            XBrushGUESS[0] = 0.97;//this is the fraction of polymer in the brush
-            for(int i=1;i<XBrushGUESS.Length;i++)
+            if(c==0)
+                XBrushGUESS[0] = 0.97;//this is the fraction of polymer in the brush
+            else
+                XBrushGUESS[0] = 0.01;
+            for (int i=1;i<XBrushGUESS.Length;i++)
                 XBrushGUESS[i] = Math.Pow(10, -8);//this is the fraction of biocomponent in the brush
              //<OLD>
 
@@ -855,10 +864,13 @@ namespace Polymer_brush
                     bool inside = mixingPartModule.IsCompositionInsideSegregationZone(composition, out segregationDelta);
                     if (inside)
                     {
-                        X[0] = mixingPartModule.Nodes[0].secondComposition[0] - 0.0000001;
+                        if(deltaX[0]<0)
+                            X[0] = mixingPartModule.Nodes[0].secondComposition[0] - 0.01;
+                        else
+                            X[0] = mixingPartModule.Nodes[0].firstComposition[0] + 0.01;
                         newthonWriter.WriteLine("Split");
-                        newthonWriter.Close();
-                        return;
+                        //newthonWriter.Close();
+                        //return;
                     }
                 }
                 if (Func.Method.Name == "BrushEquations")
@@ -1119,6 +1131,8 @@ namespace Polymer_brush
             //F[NumberOfComponents - 2] = Math.Pow((mixingPartOfExchangeChemicalPotentials[NumberOfComponents - 1] + BA * (R * (y_cur - 1.0)) * (R * (y_cur - 1.0)) - Lamb_Pol), 2);//!polymer error
             brushEquationInfo = new ProfileInfo();
             brushEquationInfo.polymerEquationError = F[0];
+            if (L == 2)
+                brushEquationInfo.additiveEquationError = F[1];
             brushEquationInfo.polymerEquationMixingPart = mixingPartOfExchangeChemicalPotentials[1];
             brushEquationInfo.polymerEquationStretchingPart = BA * (R * (y_cur - 1.0)) * (R * (y_cur - 1.0));
             mixingPartModule.CalculateMixingFreeEnergy(fipolimer);
@@ -1354,7 +1368,7 @@ namespace Polymer_brush
     public class ProfileInfo
     {
         public List<double> composition = new List<double>();
-        public List<double> additiveEquationError = new List<double>();
+        public double additiveEquationError;
         public double polymerEquationError;
         public double polymerEquationStretchingPart;
         public double polymerEquationMixingPart;
