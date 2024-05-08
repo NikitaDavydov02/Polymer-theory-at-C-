@@ -9,7 +9,7 @@ namespace Polymer_brush
 {
     class MixingPartModule
     {
-		public bool correlation = true;
+		public bool correlation = false;
 		//public double[] segregationPoints { get; private set; }
 		//public double[] segregationMixingEnergies;
 
@@ -308,6 +308,7 @@ namespace Polymer_brush
 					x2 += dx;
 					AcceptDeltaForSegregationSearch(x1, x2, Xadditive, out rightF, out leftF, out leftComposition, out rightComposition);
 					Fsep = leftF + (initialComposition[1] - x1) * (rightF - leftF) / (x2 - x1);
+					//Fsep = leftF + (x2 - initialComposition[1]) * (rightF - leftF) / (x2 - x1);
 					delta = Fsep - Finit;
 					if (delta < bestFmix)
 					{
@@ -417,10 +418,12 @@ namespace Polymer_brush
             else
             {
 				double step = 0.001;
-				if (Program.NumberOfComponents > 2)
+				if(Program.volumeFractionsInTheBulk[2]>0.001)
 					step = 0.0001;
 				for (double Xadditive = 0; Xadditive < 0.3; Xadditive += step)
 				{
+					if (Xadditive > 0.27)
+						;
 					FindSegregationPointsBetweenSolventAndPolymerAtPresenceOfAdditive(Xadditive);
 				}
 			}

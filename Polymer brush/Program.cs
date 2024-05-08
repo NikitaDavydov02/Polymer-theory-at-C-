@@ -856,6 +856,8 @@ namespace Polymer_brush
                 //<Split>
 
                 double segregationDelta;
+                double[] firstSegregationPoint;
+                double[] secondSegregationPoint;
                 if (Func.Method.Name == "BorderEquations")
                 {
                     double[] composition = new double[3];
@@ -863,13 +865,18 @@ namespace Polymer_brush
                     if (NumberOfComponents == 3)
                         composition[2] = X[1];
                     composition[1] = 1 - composition[0] - composition[2];
-                    bool inside = mixingPartModule.IsCompositionInsideSegregationZone(composition, out segregationDelta);
+                    bool inside = mixingPartModule.IsCompositionInsideSegregationZone(composition, out segregationDelta, out firstSegregationPoint, out secondSegregationPoint);
                     if (inside)
                     {
-                        X[0] = mixingPartModule.Nodes[0].secondComposition[0] - 0.0000001;
+                        //X[0] = mixingPartModule.Nodes[0].secondComposition[0] - 0.0000001;
+                        if (deltaX[0] > 0)
+                            X[0] = firstSegregationPoint[0] + 0.0001;
+                        else
+                            X[0] = secondSegregationPoint[0] + 0.0001;
                         newthonWriter.WriteLine("Split");
-                        newthonWriter.Close();
-                        return;
+                        //newthonWriter.Close();
+                        //return;
+                        splitTransitions++;
                     }
                 }
                 if (Func.Method.Name == "BrushEquations")
@@ -882,13 +889,14 @@ namespace Polymer_brush
                     }
                     realComposition[0] = 1 - sum;
                 }
-                double[] firstSegregationPoint;
-                double[] secondSegregationPoint;
+                
                 if (Func.Method.Name == "BrushEquations" && mixingPartModule.IsCompositionInsideSegregationZone(realComposition, out segregationDelta, out firstSegregationPoint, out secondSegregationPoint))
                 {
                     if (NumberOfComponents != 2)
                     {
                         newthonWriter.WriteLine("Split");
+                        newthonWriter.Close();
+                        return;
                         //.X[0] = mixingPartModule.Nodes[0].secondComposition[1] + 0.0000001;
                         if (deltaX[0] > 0)
                             X[0] = secondSegregationPoint[1] - 0.01;
@@ -927,7 +935,7 @@ namespace Polymer_brush
                             //    throw new NotImplementedException();
                             //X[0] = firstSegregationPoint[1];
 
-                            //X[0] = mixingPartModule.Nodes[0].secondComposition[1];
+                            X[0] = mixingPartModule.Nodes[0].secondComposition[1];
                             return;
                         }
                     }
