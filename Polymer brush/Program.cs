@@ -870,9 +870,9 @@ namespace Polymer_brush
                     {
                         //X[0] = mixingPartModule.Nodes[0].secondComposition[0] - 0.0000001;
                         if (deltaX[0] > 0)
-                            X[0] = firstSegregationPoint[0] + 0.0001;
+                            X[0] = firstSegregationPoint[0];
                         else
-                            X[0] = secondSegregationPoint[0] + 0.0001;
+                            X[0] = secondSegregationPoint[0];
                         newthonWriter.WriteLine("Split");
                         //newthonWriter.Close();
                         //return;
@@ -895,13 +895,11 @@ namespace Polymer_brush
                     if (NumberOfComponents != 2)
                     {
                         newthonWriter.WriteLine("Split");
-                        newthonWriter.Close();
-                        return;
                         //.X[0] = mixingPartModule.Nodes[0].secondComposition[1] + 0.0000001;
                         if (deltaX[0] > 0)
-                            X[0] = secondSegregationPoint[1] - 0.01;
+                            X[0] = secondSegregationPoint[1] - 0.00000001;
                         if (deltaX[0] < 0)
-                            X[0] = firstSegregationPoint[1] + 0.01;
+                            X[0] = firstSegregationPoint[1] + 0.00000001;
                         //newthonWriter.Close();
                         //return;
                         //throw new NotImplementedException();
@@ -947,7 +945,7 @@ namespace Polymer_brush
                 if (iterations > ITMAX)
                 {
                     newthonWriter.Close();
-                    return;
+                    //return;
                     integralLogWriter.Close();
                     throw new Exception(" Newton method did not manage to find solution for system of equations");
 
