@@ -165,7 +165,7 @@ namespace Polymer_brush
             sw = new StreamWriter("profile.txt");
             integralLogWriter = new StreamWriter("integral_log_writer.txt");
 
-
+            
             y_edge = BisectionSolve(y_min, y_max, yacc, NormalizationFunction, new List<double>());
             y_cur = y_min;
             integralLogWriter.Close();
@@ -186,7 +186,7 @@ namespace Polymer_brush
             //while (y_cur < y_edge)
             for (y_cur = 1 + stepInRelativeUnits; y_cur < y_edge; y_cur += stepInRelativeUnits)
             {
-                if (Math.Abs(y_cur - 1.02927256377978) < 0.000001)
+                if (Math.Abs(y_cur - 2.90279230182977) < 0.000001)
                     ;
                 ProfileInfo info = new ProfileInfo();
                 Xbrush = new double[NumberOfComponents];
@@ -243,7 +243,9 @@ namespace Polymer_brush
                     baseFractions[1] = profile[i].Value.composition[1];
                     //double additiveFraction = FindAdditiveConcentrationForParticularPolymerAndSolventContentInTheBrush(baseFractions);
                     double error = volumeFractionsInTheBulk[2] * 0.01;
-                    error = Math.Pow(10, -17);
+                    error = Math.Pow(10, -10);
+                    if (Math.Abs(y_cur - 2.74205418635231) < 0.00001)
+                        ;
                     additiveFraction = BisectionSolve(Math.Pow(10, -10), 0.9, error, InfinitlyDeluteAdditivesEquationsForBisectionSolve, new List<double> { baseFractions[0], baseFractions[1] });
 
                     profile[i].Value.composition.Add(additiveFraction);
@@ -526,7 +528,7 @@ namespace Polymer_brush
                     mixingPartOfExchangeChemicalPotentials[i] = mixingPartModule.CalculateExchangeChemialPotentialOfComponent(X, i);                                                                                   //AlternativemixingPartOfExchangeChemicalPotentials(i) = CalculateExchangeChemialPotentialOfComponent(3, X, i)
             }
         }
-        static void Lagrmix_PolA(int numberOfComponents, double[] X, out double[] mixingPartOfExchangeChemicalPotentials)
+        static void Lagrmix_PolA(int numberOfComponents, double[] X, out double[] mixingPartOfExchangeChemicalPotentials, bool withSegregation = true)
         {
             mixingPartOfExchangeChemicalPotentials = new double[NumberOfComponents];
             double[] AlternativemixingPartOfExchangeChemicalPotentials = new double[NumberOfComponents];
@@ -548,7 +550,7 @@ namespace Polymer_brush
 				else
 					mixingPartOfExchangeChemicalPotentials[i] = (Math.Log(X[i]) + 1.0) /  size[i] - (Math.Log(X[0]) + 1.0) /  size[0] + sum;// ! dummy for solvent  identically 0
 				*/
-                AlternativemixingPartOfExchangeChemicalPotentials[i] = mixingPartModule.CalculateExchangeChemialPotentialOfComponent(X, i);
+                AlternativemixingPartOfExchangeChemicalPotentials[i] = mixingPartModule.CalculateExchangeChemialPotentialOfComponent(X, i, withSegregation);
                 mixingPartOfExchangeChemicalPotentials[i] = AlternativemixingPartOfExchangeChemicalPotentials[i];
             }
         }
@@ -608,6 +610,8 @@ namespace Polymer_brush
             double FNORM;
             double[] _XBorder = new double[NumberOfComponents-1];
             double ERREL = Math.Pow(10, -3);
+            if (Math.Abs(y_cur - 2.90279230182977)<0.000001)
+                ;
             ////////////
             //solvent
             //additive
@@ -781,9 +785,9 @@ namespace Polymer_brush
                 XBrushGUESS[i] = Math.Pow(10, -8);//this is the fraction of biocomponent in the brush
 
             //COMMENT THIS
-            XBrushGUESS[0] = volFractionsAtTheBorder[1]+0.01;
+            /*XBrushGUESS[0] = volFractionsAtTheBorder[1]+0.01;
             if (calculationMode == CalculationMode.Usual)
-                XBrushGUESS[1] = volFractionsAtTheBorder[2];
+                XBrushGUESS[1] = volFractionsAtTheBorder[2];*/
             //COMMENT THIS
             //<OLD>
 
@@ -794,7 +798,7 @@ namespace Polymer_brush
             //XBrushGUESS[0] = 9*Math.Pow(10, -8);//this is the fraction of biocomponent in the brush
             //XBrushGUESS[1] = 0;//this is the fraction of polymer in the brush
             double FNORM;
-            if (Math.Abs(point_y - 10) < 0.01)
+            if (Math.Abs(point_y - 2.90279230182977) < 0.01)
                 ;
             DNEQNF(BrushEquations, ERREL, NumberOfComponents - 1, ITMAX, XBrushGUESS, out XBrushReduced, out FNORM);
 
@@ -905,14 +909,14 @@ namespace Polymer_brush
                         if (deltaX[0] > 0)
                         {
                             if (mixingPartModule.Nodes[0].secondComposition[1] < 0.99)
-                                X[0] = mixingPartModule.Nodes[0].secondComposition[1] + 0.01;
+                                X[0] = mixingPartModule.Nodes[0].secondComposition[1] + 0.0000001;
                             else
                                 X[0] = mixingPartModule.Nodes[0].secondComposition[1] + (1 - mixingPartModule.Nodes[0].secondComposition[1]) * 0.5;
                         }
                         if (deltaX[0] < 0)
                         {
                             if (mixingPartModule.Nodes[0].firstComposition[1] > 0.1)
-                                X[0] = mixingPartModule.Nodes[0].firstComposition[1] - 0.1;
+                                X[0] = mixingPartModule.Nodes[0].firstComposition[1] - 0.0000001;
                             else
                                 X[0] = mixingPartModule.Nodes[0].firstComposition[1] * 0.5;
                         }
@@ -928,6 +932,8 @@ namespace Polymer_brush
                             //X[0] = firstSegregationPoint[1];
 
                             //X[0] = mixingPartModule.Nodes[0].secondComposition[1];
+                            if (X[0] == 0.101000000000033)
+                                ;
                             return;
                         }
                     }
@@ -938,6 +944,8 @@ namespace Polymer_brush
                 iterations++;
                 if (iterations > ITMAX)
                 {
+                    if (X[0] == 0.101000000000033)
+                        ;
                     newthonWriter.Close();
                     return;
                     integralLogWriter.Close();
@@ -1295,7 +1303,7 @@ namespace Polymer_brush
             tryComposition[2] = xAdditive;
             //!Calculate values that in ideal case must be equal to Lagrangian multipliers based on current concentrations
             double[] chemPotInTheComplementaryBrush;
-            Lagrmix_PolA(NumberOfComponents, tryComposition, out chemPotInTheComplementaryBrush);
+            Lagrmix_PolA(NumberOfComponents, tryComposition, out chemPotInTheComplementaryBrush,false);
             double output = (chemPotInTheComplementaryBrush[2] - chemPotInTheBulk[2]);
             return output;
         }

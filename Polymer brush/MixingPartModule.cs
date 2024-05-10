@@ -192,10 +192,10 @@ namespace Polymer_brush
 			mixingPart = mixingSum;
 			return output;
 		}
-        public double CalculateExchangeChemialPotentialOfComponent(double[] X, int componenIndex, bool smallConc=true)
+        public double CalculateExchangeChemialPotentialOfComponent(double[] X, int componenIndex, bool withSegregation = true)
 		{
 			double relativeDelta = Math.Pow(10, -2);
-			double f0 = CalculateMixingFreeEnergy(X);
+			double f0 = CalculateMixingFreeEnergy(X, withSegregation);
 			double x = X[componenIndex];
 			double max_dx = 1 - x;
 			if (X[0] < max_dx)
@@ -203,8 +203,8 @@ namespace Polymer_brush
 			double dx = relativeDelta * x;
 			if (dx == 0)
 				dx = relativeDelta;
-			if (smallConc && dx < Math.Pow(10, -12))
-				dx = Math.Pow(10, -12);
+			if (dx < Math.Pow(10, -13))
+				dx = Math.Pow(10, -13);
 			if (dx > max_dx)
 			{
                 dx = max_dx / 2;
@@ -216,7 +216,7 @@ namespace Polymer_brush
 			double x_dx = x + dx;
 			X[componenIndex] = x_dx;
 			X[0] -= dx;
-			double f_df = CalculateMixingFreeEnergy(X);
+			double f_df = CalculateMixingFreeEnergy(X, withSegregation);
 
 			////////////////RETURN TO OLD//////////////////////
 			X[0] = oldSolventVolumeFraction;
