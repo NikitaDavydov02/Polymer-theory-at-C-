@@ -40,7 +40,7 @@ namespace Polymer_brush
         static StreamWriter newthonWriter;
         static StreamWriter integralLogWriter;
         static StreamWriter outputWriter;
-        static double z = 6;
+        static double z = 10;
         //static double[] chemPotInTheBulk;
         static double[] chemPotAtTheBorder;
         static MixingPartModule mixingPartModule;
@@ -127,10 +127,7 @@ namespace Polymer_brush
             //ReadSettings();
 
             Enter(task);
-            if (volumeFractionsInTheBulk[2] <= 0.001)
-                calculationMode = CalculationMode.InfinitlyDelute;
-            else
-                calculationMode = CalculationMode.Usual;
+            
             //calculationMode = CalculationMode.InfinitlyDelute;
             OutputSettings(task);
             //COMMENT IT
@@ -246,7 +243,11 @@ namespace Polymer_brush
                     error = Math.Pow(10, -10);
                     if (Math.Abs(y_cur - 2.74205418635231) < 0.00001)
                         ;
-                    additiveFraction = BisectionSolve(Math.Pow(10, -10), 0.9, error, InfinitlyDeluteAdditivesEquationsForBisectionSolve, new List<double> { baseFractions[0], baseFractions[1] });
+                    //additiveFraction = BisectionSolve(Math.Pow(10, -10), 0.9, error, InfinitlyDeluteAdditivesEquationsForBisectionSolve, new List<double> { baseFractions[0], baseFractions[1] });
+                    double lnK = 0;
+                    lnK= size[2] * (-baseFractions[1]+chi[0,2]*(1-baseFractions[0]*baseFractions[0])- baseFractions[1]* baseFractions[1]*chi[1,2]- baseFractions[0]* baseFractions[1]*(chi[1,2]+chi[0,2]-chi[0,1]));
+                    //lnK = size[2] * (Math.Log(baseFractions[0])-baseFractions[1]*(chi[1,2]-chi[0,1]-chi[0,2]));
+                    additiveFraction = volumeFractionsInTheBulk[2] * Math.Exp(lnK);
 
                     profile[i].Value.composition.Add(additiveFraction);
                     additiveTotalVolume += (stepInRelativeUnits * R) * 4 * 3.1415 * (y_cur * R) * (y_cur * R) * additiveFraction;
@@ -489,9 +490,20 @@ namespace Polymer_brush
                 for (int j = 0; j < chiMatrixSize; j++)
                     etas[i, j] = Math.Exp(- chi[i, j] / z);
             ////////////////////////////////////
-
+            if (volumeFractionsInTheBulk[2] <= 0.001)
+                calculationMode = CalculationMode.InfinitlyDelute;
+            else
+                calculationMode = CalculationMode.Usual;
+            //COMMENT IT
+            //calculationMode = CalculationMode.InfinitlyDelute;
+            //COMMENT IT
             if (mixingPartModuleCopy == null)
-                mixingPartModule = new MixingPartModule();
+            {
+                if(calculationMode==CalculationMode.InfinitlyDelute)
+                    mixingPartModule = new MixingPartModule(false);
+                else
+                    mixingPartModule = new MixingPartModule();
+            }
             else
                 mixingPartModule = mixingPartModuleCopy;
 
@@ -1192,7 +1204,7 @@ namespace Polymer_brush
                 fileName = "surface_nonlinearized.txt";
             using(StreamWriter surfaceWriter = new StreamWriter(fileName))
             {
-                surfaceWriter.WriteLine("Solvent;Polymer;Bio;F;isSegreagated; osmotic;");
+                surfaceWriter.WriteLine("Solvent;Polymer;Bio;F;isSegreagated; osmotic;solvPot;polPot;bioPot");
                 for (double x1 = 0; x1 <= 1; x1+=step)
                 {
                     fractions[0] = x1;
@@ -1203,12 +1215,18 @@ namespace Polymer_brush
                             continue;
                         fractions[1] = x2;
                         fractions[2] = x3;
+                        if (Math.Abs(x1 - 0.25) < 0.001 && Math.Abs(x2-0.71)<0.0001)
+                            ;
+                        if (Math.Abs(x1 - 0.25) < 0.001 && Math.Abs(x2 - 0.715) < 0.0001)
+                            ;
                         double F = mixingPartModule.CalculateMixingFreeEnergy(fractions,linearized);
+                        double[] chemPot;
+                        Lagrmix(NumberOfComponents, fractions, out chemPot);
                         double osmoticPressure = CalculateOsmoticPressure(fractions);
                         double a;
                         bool segregated = mixingPartModule.IsCompositionInsideSegregationZone(fractions, out a);
                         if(linearized)
-                            surfaceWriter.WriteLine(x1 + ";" + x2 + ";" + x3 + ";" + F + ";"+ segregated+";" + osmoticPressure + ";");
+                            surfaceWriter.WriteLine(x1 + ";" + x2 + ";" + x3 + ";" + F + ";"+ segregated+";" + osmoticPressure + ";" + chemPot[0] + ";" + chemPot[1] +";" + chemPot[2]);
                         else
                             surfaceWriter.WriteLine(x1 + ";" + x2 + ";" + x3 + ";" + F + ";");
                         //output.Add(new KeyValuePair<Vector3, double>(new Vector3(x1,x2,x3), F));

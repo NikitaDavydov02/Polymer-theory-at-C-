@@ -18,13 +18,14 @@ namespace Polymer_brush
 		public List<Node> Nodes { get; private set; }
 		public double mixingPart;
 		public double entropyPart;
-		public MixingPartModule()
+		public MixingPartModule(bool calculateNodes = true)
 		{
 			//TernarySegregationPoints = new List<KeyValuePair<double, double[]>>();
 			//TernarySegregatioMixingEnergies = new List<KeyValuePair<double, double[]>>();
 			Nodes = new List<Node>();
 			Console.WriteLine("Fining segregation points");
-			FindSegregationPointsBetweenSolventAndPolymer();
+			if(calculateNodes)
+				FindSegregationPointsBetweenSolventAndPolymer();
 			Console.WriteLine(Nodes.Count + " nodes are found");
 		}
 		public bool IsCompositionInsideSegregationZone(double[] X)
@@ -169,7 +170,7 @@ namespace Polymer_brush
 			int n = X.Length;
 			double translationSum = 0;
 			for (int i = 0; i < Program.NumberOfComponents; i++)
-				if(X[i]!=0 && i!=1)
+				if(XofMolecules[i]!= 0)
 					translationSum += XofMolecules[i] * Math.Log(XofMolecules[i]) / Program.size[i]; 
 			double[] XX = CalculateGugenheimCorrelations(X, Program.etas);
 			double mixingSum = 0;
@@ -194,6 +195,8 @@ namespace Polymer_brush
 		}
         public double CalculateExchangeChemialPotentialOfComponent(double[] X, int componenIndex, bool withSegregation = true)
 		{
+			//if (componenIndex == 2)
+			//	return ((Math.Log(X[2])+1)/Program.size[2]-Math.Log(X[0])-1+Program.chi[1,2]*X[1]+ Program.chi[0, 2]*(1-X[1]-2*X[2])- Program.chi[0, 1]*X[1]);
 			double relativeDelta = Math.Pow(10, -2);
 			double f0 = CalculateMixingFreeEnergy(X, withSegregation);
 			double x = X[componenIndex];
@@ -201,6 +204,7 @@ namespace Polymer_brush
 			if (X[0] < max_dx)
 				max_dx = X[0];
 			double dx = relativeDelta * x;
+			//dx = 0.01;
 			if (dx == 0)
 				dx = relativeDelta;
 			if (dx < Math.Pow(10, -13))
