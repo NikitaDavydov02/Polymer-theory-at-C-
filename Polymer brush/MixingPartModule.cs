@@ -19,11 +19,14 @@ namespace Polymer_brush
 		public double mixingPart;
 		public double entropyPart;
 		public MixingPartModule(bool calculateNodes = true)
-		{
-			//TernarySegregationPoints = new List<KeyValuePair<double, double[]>>();
-			//TernarySegregatioMixingEnergies = new List<KeyValuePair<double, double[]>>();
-			Nodes = new List<Node>();
-			Console.WriteLine("Fining segregation points");
+        {
+            //TernarySegregationPoints = new List<KeyValuePair<double, double[]>>();
+            //TernarySegregatioMixingEnergies = new List<KeyValuePair<double, double[]>>();
+            Nodes = new List<Node>();
+			XX = new double[3];
+			for (int i = 0; i < 3; i++)
+				XX[i] = 1;
+            Console.WriteLine("Fining segregation points");
 			if(calculateNodes)
 				FindSegregationPointsBetweenSolventAndPolymer();
 			Console.WriteLine(Nodes.Count + " nodes are found");
@@ -164,6 +167,7 @@ namespace Polymer_brush
 			mixingPart = b;
 			return (a+b);
 		}
+		public double[] XX;
 		private double CalculateGugenheimMixingFreeEnergy(double[] XofMolecules)
 		{
 			double[] X = CalculateFunctionalGroupsMolarFractions(XofMolecules);
@@ -172,7 +176,7 @@ namespace Polymer_brush
 			for (int i = 0; i < Program.NumberOfComponents; i++)
 				if(XofMolecules[i]!= 0)
 					translationSum += XofMolecules[i] * Math.Log(XofMolecules[i]) / Program.size[i]; 
-			double[] XX = CalculateGugenheimCorrelations(X, Program.etas);
+			XX = CalculateGugenheimCorrelations(X, Program.etas);
 			double mixingSum = 0;
 			for (int i = 0; i < n; i++)
 				for (int j = 0; j < i; j++)
@@ -256,7 +260,7 @@ namespace Polymer_brush
 					XX[i] = (XX[i] + newXX[i]) / 2;
 				converged = true;
 				for (int i = 0; i < n; i++)
-					if (Math.Abs(XX[i] - newXX[i]) > Math.Pow(10, -12))
+					if (Math.Abs(XX[i] - newXX[i]) > Math.Pow(10, -15))
 					{
 						converged = false;
 						break;

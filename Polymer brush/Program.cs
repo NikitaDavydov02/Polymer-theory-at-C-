@@ -206,6 +206,7 @@ namespace Polymer_brush
                     composition.Add(fipolimer[i]);
                 
                 info.composition = composition;
+                info.XX = new List<double>();
                 profile.Add(new KeyValuePair<double, ProfileInfo>(y_cur, info));
                 polymerAmount += stepInRelativeUnits * y_cur * y_cur * composition[1];
                 // y_cur += aA / R;
@@ -243,13 +244,17 @@ namespace Polymer_brush
                     error = Math.Pow(10, -10);
                     if (Math.Abs(y_cur - 2.74205418635231) < 0.00001)
                         ;
-                    //additiveFraction = BisectionSolve(Math.Pow(10, -10), 0.9, error, InfinitlyDeluteAdditivesEquationsForBisectionSolve, new List<double> { baseFractions[0], baseFractions[1] });
+                    additiveFraction = BisectionSolve(Math.Pow(10, -10), 0.9, error, InfinitlyDeluteAdditivesEquationsForBisectionSolve, new List<double> { baseFractions[0], baseFractions[1] });
                     double lnK = 0;
                     lnK= size[2] * (-baseFractions[1]+chi[0,2]*(1-baseFractions[0]*baseFractions[0])- baseFractions[1]* baseFractions[1]*chi[1,2]- baseFractions[0]* baseFractions[1]*(chi[1,2]+chi[0,2]-chi[0,1]));
-                    //lnK = size[2] * (Math.Log(baseFractions[0])-baseFractions[1]*(chi[1,2]-chi[0,1]-chi[0,2]));
-                    additiveFraction = volumeFractionsInTheBulk[2] * Math.Exp(lnK);
+                    lnK = size[2] * (Math.Log(baseFractions[0])-baseFractions[1]*(chi[1,2]-chi[0,1]-chi[0,2]));
+                    //additiveFraction = volumeFractionsInTheBulk[2] * Math.Exp(lnK);
 
                     profile[i].Value.composition.Add(additiveFraction);
+                    for(int j=0;j<NumberOfComponents;j++)
+                        profile[i].Value.XX.Add(mixingPartModule.XX[j]);
+                    if(i==0)
+                        OutputCorrelationInfo(profile[i].Value.composition);
                     additiveTotalVolume += (stepInRelativeUnits * R) * 4 * 3.1415 * (y_cur * R) * (y_cur * R) * additiveFraction;
                     profile[i].Value.adsorbtion = additiveTotalVolume / (aA * aA * aA * size[2]);
                 }
@@ -273,7 +278,7 @@ namespace Polymer_brush
             outputWriter.WriteLine();
             outputWriter.WriteLine();
             outputWriter.WriteLine("///////////////////////////OUTPUT/////////////////////////////");
-            outputWriter.WriteLine("y_cur,nm    y_cur    solvent    polymer    bio    adsorbtion    polymer_dx    additve_dx    polymerEquationError    polymerEquationMixingPart    polymerEquationStretchingPart    mixingEnergyContributionToF    entropyContributionToF");
+            outputWriter.WriteLine("y_cur,nm    y_cur    solvent    polymer    bio    adsorbtion    solvXX    polXX    bioXX    polymer_dx    additve_dx    polymerEquationError    polymerEquationMixingPart    polymerEquationStretchingPart    mixingEnergyContributionToF    entropyContributionToF");
             for (int i = 0; i < profile.Count; i++)
             {
                 string line = ((profile[i].Key-1)*R*Math.Pow(10,9)) + "    ";
@@ -281,6 +286,9 @@ namespace Polymer_brush
                 for (int j = 0; j < profile[i].Value.composition.Count; j++)
                     line += profile[i].Value.composition[j] + "    ";
                 line += profile[i].Value.adsorbtion + "    ";
+                line += profile[i].Value.XX[0] + "    ";
+                line += profile[i].Value.XX[1] + "    ";
+                line += profile[i].Value.XX[2] + "    ";
                 line += profile[i].Value.polymer_dX_error + "    ";
                 line += profile[i].Value.additive_dX_error + "    ";
                 line += profile[i].Value.polymerEquationError + "    ";
@@ -291,7 +299,10 @@ namespace Polymer_brush
                 sw.WriteLine(line);
                 outputWriter.WriteLine(line + (Osmmix(Program.NumberOfComponents, fipolimer) - osmbulk));
             }
-
+            //Correlation matrix
+           
+            //******************************************
+            
             Console.WriteLine("Beta: " + y_edge);
             Console.WriteLine("Number of molecules: " + additiveNumberOfMollecules);
             Console.WriteLine("Normalization relative error: " + (polymerAmount - norm)/norm);
@@ -309,6 +320,77 @@ namespace Polymer_brush
             outputWriter.WriteLine("**************************************************************");
 
             
+        }
+        static void OutputCorrelationInfo(List<double> compos)
+        {
+            Console.WriteLine("****************************");
+            //outputWriter.WriteLine("Correlation matrix");
+            Console.WriteLine("XX");
+            for (int i = 0; i < NumberOfComponents; i++)
+                Console.WriteLine(mixingPartModule.XX[i]);
+            Console.WriteLine("*************************");
+            Console.WriteLine("Correlation matrix");
+            for (int i = 0; i < NumberOfComponents; i++)
+            {
+                string l = "";
+                for (int j = 0; j < NumberOfComponents; j++)
+                {
+                    double v = mixingPartModule.XX[i] * mixingPartModule.XX[j] * etas[i, j];
+                    l += v;
+                    l += "    ";
+                }
+                //outputWriter.WriteLine(l);
+                Console.WriteLine(l);
+            }
+            Console.WriteLine("*************************");
+            Console.WriteLine("Without correlation contact matrix");
+            //outputWriter.WriteLine("****************************");
+            //outputWriter.WriteLine("Without correlation contact matrix");
+            for (int i = 0; i < NumberOfComponents; i++)
+            {
+                string l = "";
+                for (int j = 0; j < NumberOfComponents; j++)
+                {
+                    double v = compos[i] * compos[j];
+                    if (i != j)
+                        v *= 2;
+                    l += v;
+                    l += "    ";
+                }
+                //outputWriter.WriteLine(l);
+                Console.WriteLine(l);
+            }
+            Console.WriteLine("****************************");
+            Console.WriteLine("With correlation contact matrix");
+            //outputWriter.WriteLine("****************************");
+            //outputWriter.WriteLine("With correlation contact matrix");
+            for (int i = 0; i < NumberOfComponents; i++)
+            {
+                string l = "";
+                for (int j = 0; j < NumberOfComponents; j++)
+                {
+                    double v = compos[i] * compos[j] * mixingPartModule.XX[i] * mixingPartModule.XX[j] * etas[i, j];
+                    if (i != j)
+                        v *= 2;
+                    l += v;
+                    l += "    ";
+                }
+                //outputWriter.WriteLine(l);
+                Console.WriteLine(l);
+            }
+            Console.WriteLine("****************************");
+            Console.WriteLine("Correlation equations check");
+
+            for (int i = 0; i < 3; i++)
+            {
+                double value = mixingPartModule.XX[i];
+                double sum = 0;
+                for (int j = 0; j < 3; j++)
+                    sum += compos[j] * mixingPartModule.XX[j] * etas[i, j];
+                value *= sum;
+                Console.WriteLine(value);
+            }
+
         }
         static void ApplySettings(Input settings)
         {
@@ -1408,5 +1490,6 @@ namespace Polymer_brush
         public double polymer_dX_error;
         public double additive_dX_error;
         public double adsorbtion;
+        public List<double> XX;
     }
 }
